@@ -79,8 +79,29 @@ const hotelSchema = mongoose.Schema({
       },
       hotelImg4:{
         type:String
-      }
-      
+      },
 })
+hotelSchema.methods.generateAuthToken = async function () {
+  try {
+    console.log('toke data',this._id);
+    // const token = jwt.sign(
+    //   { _id: this._id.toString() },
+    //   process.env.registerData,
+    //   {
+    //     expiresIn: 3600,
+    //   }
+    // );
+    const token = jwt.sign(
+        { _id: this._id.toString() },
+        'hotelRegisterData',
+        {
+          expiresIn: 3600,
+        }
+      );
+    return token;
+  } catch (e) {
+    res.status(400).send({ mssg: "token does not exist" });
+  }
+}
 const hotelData = new mongoose.model("hotelData", hotelSchema);
 module.exports=hotelData

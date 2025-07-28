@@ -1,13 +1,16 @@
 const hotel=require('../models/hotelSchema')
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken");
+const twilio=require('twilio')
 const cloudinary = require("cloudinary").v2;
+const dotenv=require('dotenv')
+dotenv.config()
+const client = twilio(process.env.TWILIO_SID,process.env. TWILIO_AUTH_TOKEN);
 cloudinary.config({ 
    cloud_name:'dpzvj9ubu',
    api_key:'432745627761171',
    api_secret:'YnrBTkdAPPz-AsnPEBkL1HfDfYA'
   });
- 
   exports.hotelRegister = async (req, res) => {
     console.log('register data is',req.body)
     let cloudImageUrls = []
@@ -113,4 +116,99 @@ cloudinary.config({
         res.status(401).send({ mssg: 'Data does not added' });
     }
   };
+  exports.getHotelName = async (req, res) => {
+    try {
+      const phone = req.body.phone;
+      const allHotels = await hotel.find().lean();
   
+      const matchedHotelNames = [];
+  
+      allHotels.forEach(hotel => {
+        let isMatched = false;
+  
+        // Check owner1
+        if (hotel.owner1 && hotel.owner1.phone === phone) {
+          isMatched = true;
+        }
+  
+        // Check owner2
+        if (hotel.owner2 && hotel.owner2.phone === phone) {
+          isMatched = true;
+        }
+  
+        // Check staff
+        if (hotel.staff) {
+          Object.values(hotel.staff).forEach(staffMember => {
+            if (staffMember.phone === phone) {
+              isMatched = true;
+            }
+          });
+        }
+  
+        if (isMatched) {
+          matchedHotelNames.push(hotel.hotelName || null); // null only if hotelName missing
+        }
+      });
+  
+      res.status(200).send({
+        mssg: 'get hotel name',
+        matchedNames: matchedHotelNames,
+      });
+  
+    } catch (e) {
+      console.error(e);
+      res.status(401).send({ mssg: 'login failed' });
+    }
+  };
+  const generateRandomCode = () => {
+    return Math.floor(10000 + Math.random() * 90000).toString();
+};
+
+exports.getOtp=async(req,res)=>{
+try{
+const phone=req.body.phone
+const randomCode = generateRandomCode();
+let message =  `Your Login OTP is ${randomCode}`;
+await client.messages.create({
+  body: message,
+  from: '+16187496515',
+  // from: '+16187496515', // Your Twilio phone number
+  to: '+91' + phone, // User's phone number
+});
+res.status(201).send({
+  mssg: 'otp send Successfully',
+  otp: randomCode,
+  phoneNumber:phone,
+});
+}catch(e){
+  console.error(e);
+  res.status(401).send({ mssg: 'otp send failed' });
+}
+  }
+
+exports.compareOtp=async(req,res)=>{
+try{
+const phone=req.body.phone
+const hotelName=req.body.hotelName
+const allHotel=await hotel.find()
+const matchedHotels = allHotel.filter(hotel => {
+  return (
+    (
+      hotel.owner1?.phone === phone ||
+      hotel.owner2?.phone === phone ||
+      hotel.owner3?.phone === phone ||
+      hotel.owner4?.phone === phone ||
+      Object.values(hotel.staff || {}).some(staff => staff.phone === phone)
+    )
+    &&
+    hotel.hotelName?.trim().toLowerCase() === hotelName?.trim().toLowerCase()
+  );
+});
+const matchObj=matchedHotels[0]
+const token = await matchObj.generateAuthToken();
+res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token})
+}catch(e){
+  console.error(e);
+  res.status(401).send({ mssg: 'comparison failed' });
+}
+}  

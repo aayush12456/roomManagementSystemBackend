@@ -16,4 +16,7 @@ const upload = multer({
     { name: "ownerImages", maxCount: 4 },    // owner1,2,3,4 image
   ])
   , hotelController.hotelRegister);
+  router.post('/getHotelName',hotelController.getHotelName)
+  router.post('/loginWithOtp',hotelController.getOtp)
+  router.post('/compareOtp',hotelController.compareOtp)
   module.exports = router;
