@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const jwt = require("jsonwebtoken");
 const staffSchema = require("./staffSchema");
+const roomSchema = require("./roomSchema");
 const hotelSchema = mongoose.Schema({
     hotelName: {
         type: String,
@@ -68,6 +69,23 @@ const hotelSchema = mongoose.Schema({
         of: staffSchema,
         required: true
       },
+      totalRoom: {
+        type: String,
+        required: true,
+      },
+      totalFloor: {
+        type: String,
+        required: true,
+      },
+      room: {
+        type: Map,
+        of: {
+          type: Map,
+          of: roomSchema,
+        },
+        required: true
+      },
+      
       hotelImg1:{
         type:String
       },

@@ -96,6 +96,37 @@ cloudinary.config({
       staffMap.forEach((value, key) => {
         staffObject[key] = value;
       });
+
+let roomObject = {};
+
+if (req.body.roomData) {
+  // Agar roomData string hai, toh use JSON me badal do
+  const roomData = typeof req.body.roomData === 'string' 
+    ? JSON.parse(req.body.roomData) 
+    : req.body.roomData;
+
+  // Har ek room ke liye loop chalao
+  for (let roomName in roomData) {
+    const roomDetails = roomData[roomName]; // Jaise: { roomType: 'Ac', bedType: 'Double Bed' }
+
+    // Room name se floor ka naam nikaalo
+    // "Ground Floor Room 1" → "Ground Floor"
+    const floorName = roomName.split(" Room")[0];
+
+    // Floor key banate hain (space hataake aur lowercase me)
+    // "Ground Floor" → "groundfloor"
+    const floorKey = floorName.toLowerCase().replace(/\s+/g, '');
+
+    // Agar floor key pe koi value nahi hai, toh ek khaali object banao
+    if (!roomObject[floorKey]) {
+      roomObject[floorKey] = {};
+    }
+
+    // Ab us floor ke andar room ka data daal do
+    roomObject[floorKey][roomName] = roomDetails;
+  }
+}
+
     const hotelData=new hotel({
       hotelName:req.body.hotelName,
       owner1:req.body.owner1,
@@ -107,6 +138,9 @@ cloudinary.config({
       hotelImg3: hotelImageUrls[2] || null,
       hotelImg4: hotelImageUrls[3] || null,
       staff: staffObject,
+      totalRoom:req.body.totalRoom,
+      totalFloor:req.body.totalFloor,
+      room: roomObject, 
     })
     await hotelData.save();
     console.log('hotelData',hotelData)
