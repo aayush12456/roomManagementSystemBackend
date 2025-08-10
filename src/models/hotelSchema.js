@@ -8,6 +8,7 @@ const hotelSchema = mongoose.Schema({
         type: String,
         required: true,
         minLength: 3,
+        unique:true
       },
       owner1: {
         name: {

@@ -19,4 +19,5 @@ const upload = multer({
   router.post('/getHotelName',hotelController.getHotelName)
   router.post('/loginWithOtp',hotelController.getOtp)
   router.post('/compareOtp',hotelController.compareOtp)
+  router.get('/getRoomDetails/:id',hotelController.getRoomDetails)
   module.exports = router;

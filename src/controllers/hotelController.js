@@ -205,8 +205,7 @@ const randomCode = generateRandomCode();
 let message =  `Your Login OTP is ${randomCode}`;
 await client.messages.create({
   body: message,
-  from: '+16187496515',
-  // from: '+16187496515', // Your Twilio phone number
+  from: '+15802093842',
   to: '+91' + phone, // User's phone number
 });
 res.status(201).send({
@@ -246,3 +245,17 @@ res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token}
   res.status(401).send({ mssg: 'comparison failed' });
 }
 }  
+
+exports.getRoomDetails=async(req,res)=>{
+try{
+const id=req.params.id
+console.log('id is',id)
+const hotelObj=await hotel.findOne({_id:id})
+res.status(200).send({mssg:'fetch data',hotelObj:hotelObj})
+}
+
+catch(e){
+  console.error(e);
+  res.status(401).send({ mssg: 'comparison failed' });
+}
+}
