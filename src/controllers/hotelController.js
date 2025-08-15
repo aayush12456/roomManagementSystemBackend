@@ -259,3 +259,47 @@ catch(e){
   res.status(401).send({ mssg: 'comparison failed' });
 }
 }
+
+exports.addCustomerDetails=async(req,res)=>{
+try{
+const hotelId=req.params.id  
+const roomId=req.body.roomId
+const customerName=req.body.customerName
+const customerAddress=req.body.customerAddress
+const customerPhoneNumber=req.body.customerPhoneNumber
+const totalCustomer=req.body.totalCustomer
+const customerAadharNumber=req.body.customerAadharNumber
+const customerCity=req.body.customerCity
+const checkInDate=req.body.customerCity
+const checkInTime=req.body.checkInTime
+const checkOutDate=req.body.checkOutDate
+const checkOutTime=req.body.checkOutTime
+const frontDeskExecutiveName=req.body.frontDeskExecutiveName
+
+const hotelDetails=await hotel.findOne({_id:hotelId})
+
+hotelDetails.roomArray.push(
+{roomId:roomId,customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
+totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
+checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
+frontDeskExecutiveName:frontDeskExecutiveName
+})
+const data=await hotelDetails.save()
+console.log('data us',data)
+res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray})
+}catch(e){
+  console.error(e);
+  res.status(401).send({ mssg: 'customer addition failed' });
+}
+}
+
+exports.getCustomerDetails=async(req,res)=>{
+try{
+const hotelId=req.params.id
+const getCustomerDetails=await hotel.findOne({_id:hotelId})
+res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray})
+}catch(e){
+  console.error(e);
+  res.status(401).send({ mssg: 'get customer details failed' });
+}
+}

@@ -99,6 +99,22 @@ const hotelSchema = mongoose.Schema({
       hotelImg4:{
         type:String
       },
+      roomArray: [
+        {
+          roomId: String,
+          customerName: String,
+          customerAddress: String,
+          customerPhoneNumber: String,
+          totalCustomer: String,
+          customerAadharNumber: String,
+          customerCity: String,
+          checkInDate: String,
+          checkInTime: String,
+          checkOutDate: String,
+          checkOutTime: String,
+          frontDeskExecutiveName: String
+        }
+      ]
 })
 hotelSchema.methods.generateAuthToken = async function () {
   try {
