@@ -46,6 +46,9 @@ io.on('connection', (socket) => {
     socket.on('addCustomerDetails',(message)=>{
         io.emit('getCustomerDetails',message)
     })
+    socket.on('deleteCustomerDetails',(message)=>{
+        io.emit('getCustomerDetails',message)
+    })
 
     
 });

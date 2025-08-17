@@ -270,7 +270,7 @@ const customerPhoneNumber=req.body.customerPhoneNumber
 const totalCustomer=req.body.totalCustomer
 const customerAadharNumber=req.body.customerAadharNumber
 const customerCity=req.body.customerCity
-const checkInDate=req.body.customerCity
+const checkInDate=req.body.checkInDate
 const checkInTime=req.body.checkInTime
 const checkOutDate=req.body.checkOutDate
 const checkOutTime=req.body.checkOutTime
@@ -303,3 +303,28 @@ res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDe
   res.status(401).send({ mssg: 'get customer details failed' });
 }
 }
+
+exports.deleteCustomerDetails = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const customerId = req.body.customerId;
+
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { roomArray: { _id: customerId } } }, // directly remove
+      { new: true }
+    );
+
+    if (!updatedHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    res.status(200).send({
+      mssg: "Customer deleted successfully",
+      getCustomerDetailsArray: updatedHotel.roomArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Delete customer details failed" });
+  }
+};
