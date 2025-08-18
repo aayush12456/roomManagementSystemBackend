@@ -274,6 +274,9 @@ const checkInDate=req.body.checkInDate
 const checkInTime=req.body.checkInTime
 const checkOutDate=req.body.checkOutDate
 const checkOutTime=req.body.checkOutTime
+const totalPayment=req.body.totalPayment
+const paymentPaid=req.body.paymentPaid
+const paymentDue=req.body.paymentDue
 const frontDeskExecutiveName=req.body.frontDeskExecutiveName
 
 const hotelDetails=await hotel.findOne({_id:hotelId})
@@ -282,7 +285,7 @@ hotelDetails.roomArray.push(
 {roomId:roomId,customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
 totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
-frontDeskExecutiveName:frontDeskExecutiveName
+totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName
 })
 const data=await hotelDetails.save()
 console.log('data us',data)
@@ -320,7 +323,7 @@ exports.deleteCustomerDetails = async (req, res) => {
     }
 
     res.status(200).send({
-      mssg: "Customer deleted successfully",
+      mssg: "Customer details deleted successfully",
       getCustomerDetailsArray: updatedHotel.roomArray,
     });
   } catch (e) {
@@ -328,3 +331,53 @@ exports.deleteCustomerDetails = async (req, res) => {
     res.status(401).send({ mssg: "Delete customer details failed" });
   }
 };
+
+exports.updateCustomerDetails = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const roomId = req.body.roomId;
+    console.log('update room id',roomId)
+    const hotelDetails = await hotel.findOne({ _id: hotelId });
+    if (!hotelDetails) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    // jis customer ka _id match kare use find karo
+    const customer = hotelDetails.roomArray.find(
+      (c) => c.roomId.toString() === roomId
+    );
+
+    if (!customer) {
+      return res.status(404).send({ mssg: "Customer not found" });
+    }
+
+    // new details assign karo
+    Object.assign(customer, {
+      customerName: req.body.customerName,
+      customerAddress: req.body.customerAddress,
+      customerPhoneNumber: req.body.customerPhoneNumber,
+      totalCustomer: req.body.totalCustomer,
+      customerAadharNumber: req.body.customerAadharNumber,
+      customerCity: req.body.customerCity,
+      checkInDate: req.body.checkInDate,
+      checkInTime: req.body.checkInTime,
+      checkOutDate: req.body.checkOutDate,
+      checkOutTime: req.body.checkOutTime,
+      totalPayment: req.body.totalPayment,
+      paymentPaid: req.body.paymentPaid,
+      paymentDue: req.body.paymentDue,
+      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+    });
+
+    await hotelDetails.save();
+
+    res.status(200).send({
+      mssg: "Customer details updated successfully",
+      getCustomerDetailsArray: hotelDetails.roomArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Update customer details failed" });
+  }
+};
+

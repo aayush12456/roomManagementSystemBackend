@@ -112,6 +112,9 @@ const hotelSchema = mongoose.Schema({
           checkInTime: String,
           checkOutDate: String,
           checkOutTime: String,
+          totalPayment: String,
+          paymentPaid:String,
+          paymentDue:String,
           frontDeskExecutiveName: String
         }
       ]

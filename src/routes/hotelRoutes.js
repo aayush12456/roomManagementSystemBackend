@@ -23,4 +23,5 @@ const upload = multer({
   router.post('/addCustomerDetails/:id',hotelController.addCustomerDetails)
   router.get('/getCustomerDetails/:id',hotelController.getCustomerDetails)
   router.post('/deleteCustomerDetails/:id',hotelController.deleteCustomerDetails)
+  router.post('/updateCustomerDetails/:id',hotelController.updateCustomerDetails)
   module.exports = router;
