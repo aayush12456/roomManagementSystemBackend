@@ -264,6 +264,9 @@ exports.addCustomerDetails=async(req,res)=>{
 try{
 const hotelId=req.params.id  
 const roomId=req.body.roomId
+const roomType=req.body.roomType
+const floor=req.body.floor
+const roomNo=req.body.roomNo
 const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
@@ -282,7 +285,7 @@ const frontDeskExecutiveName=req.body.frontDeskExecutiveName
 const hotelDetails=await hotel.findOne({_id:hotelId})
 
 hotelDetails.roomArray.push(
-{roomId:roomId,customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
+{roomId:roomId,roomType:roomType,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
 totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName

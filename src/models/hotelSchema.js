@@ -102,6 +102,9 @@ const hotelSchema = mongoose.Schema({
       roomArray: [
         {
           roomId: String,
+          roomType:String,
+          floor:String,
+          roomNo:String,
           customerName: String,
           customerAddress: String,
           customerPhoneNumber: String,
