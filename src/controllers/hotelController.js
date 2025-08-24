@@ -133,6 +133,7 @@ if (req.body.roomData) {
       owner2:req.body.owner2,
       owner3:req.body.owner3,
       owner4:req.body.owner4,
+      checkOutTime:req.body.checkOutTime,
       hotelImg1: hotelImageUrls[0] || null,
       hotelImg2: hotelImageUrls[1] || null,
       hotelImg3: hotelImageUrls[2] || null,
@@ -267,6 +268,7 @@ const roomId=req.body.roomId
 const roomType=req.body.roomType
 const floor=req.body.floor
 const roomNo=req.body.roomNo
+const currentDate=req.body.currentDate
 const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
@@ -281,15 +283,36 @@ const totalPayment=req.body.totalPayment
 const paymentPaid=req.body.paymentPaid
 const paymentDue=req.body.paymentDue
 const frontDeskExecutiveName=req.body.frontDeskExecutiveName
+const customerSignature=req.body.customerSignature
 
+let signatureUrl = "";
+    if (customerSignature) {
+      const uploadResponse = await cloudinary.uploader.upload(customerSignature, {
+        folder: "customer_signatures",
+        resource_type: "image",
+      });
+      signatureUrl = uploadResponse.secure_url;
+    }
+
+console.log('customer signature',customerSignature)
+console.log('customer signature url',signatureUrl)
 const hotelDetails=await hotel.findOne({_id:hotelId})
 
 hotelDetails.roomArray.push(
-{roomId:roomId,roomType:roomType,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
+{roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
 totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
-totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName
+totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
+customerSignature: signatureUrl
 })
+
+hotelDetails.reportArray.push(
+  {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
+  totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
+  checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
+  totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
+  customerSignature: signatureUrl
+  })
 const data=await hotelDetails.save()
 console.log('data us',data)
 res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray})
@@ -356,6 +379,30 @@ exports.updateCustomerDetails = async (req, res) => {
 
     // new details assign karo
     Object.assign(customer, {
+      customerName: req.body.customerName,
+      customerAddress: req.body.customerAddress,
+      customerPhoneNumber: req.body.customerPhoneNumber,
+      totalCustomer: req.body.totalCustomer,
+      customerAadharNumber: req.body.customerAadharNumber,
+      customerCity: req.body.customerCity,
+      checkInDate: req.body.checkInDate,
+      checkInTime: req.body.checkInTime,
+      checkOutDate: req.body.checkOutDate,
+      checkOutTime: req.body.checkOutTime,
+      totalPayment: req.body.totalPayment,
+      paymentPaid: req.body.paymentPaid,
+      paymentDue: req.body.paymentDue,
+      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+    });
+
+    const reportCustomer = hotelDetails.roomArray.find(
+      (c) => c.roomId.toString() === roomId
+    );
+
+    if (!reportCustomer) {
+      return res.status(404).send({ mssg: "Customer not found" });
+    }
+    Object.assign(reportCustomer, {
       customerName: req.body.customerName,
       customerAddress: req.body.customerAddress,
       customerPhoneNumber: req.body.customerPhoneNumber,

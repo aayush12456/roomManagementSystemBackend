@@ -10,6 +10,11 @@ const hotelSchema = mongoose.Schema({
         minLength: 3,
         unique:true
       },
+      checkOutTime: {
+        type: String,
+        required: true,
+        unique:true
+      },
       owner1: {
         name: {
           type: String,
@@ -118,8 +123,36 @@ const hotelSchema = mongoose.Schema({
           totalPayment: String,
           paymentPaid:String,
           paymentDue:String,
-          frontDeskExecutiveName: String
+          frontDeskExecutiveName: String,
+          customerSignature:String,
+          currentDate:String
         }
+        
+      ],
+      reportArray: [
+        {
+          roomId: String,
+          roomType:String,
+          floor:String,
+          roomNo:String,
+          customerName: String,
+          customerAddress: String,
+          customerPhoneNumber: String,
+          totalCustomer: String,
+          customerAadharNumber: String,
+          customerCity: String,
+          checkInDate: String,
+          checkInTime: String,
+          checkOutDate: String,
+          checkOutTime: String,
+          totalPayment: String,
+          paymentPaid:String,
+          paymentDue:String,
+          frontDeskExecutiveName: String,
+          customerSignature:String,
+          currentDate:String
+        }
+        
       ]
 })
 hotelSchema.methods.generateAuthToken = async function () {
