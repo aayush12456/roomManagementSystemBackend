@@ -52,7 +52,9 @@ io.on('connection', (socket) => {
     socket.on('updateCustomerDetails',(message)=>{
         io.emit('getCustomerDetails',message)
     })
-
+    socket.on('addCustomerDetailsAdvance',(message)=>{
+        io.emit('getCustomerDetailsAdvance',message)
+    })
     
 });
 

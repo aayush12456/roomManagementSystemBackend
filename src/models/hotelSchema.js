@@ -153,7 +153,21 @@ const hotelSchema = mongoose.Schema({
           currentDate:String
         }
         
-      ]
+      ],
+      advanceRoomArray: [
+        {
+          roomId: String,
+          roomType:String,
+          floor:String,
+          roomNo:String,
+          customerName: String,
+          customerAddress: String,
+          customerPhoneNumber: String,
+          frontDeskExecutiveName: String,
+
+        }
+        
+      ],
 })
 hotelSchema.methods.generateAuthToken = async function () {
   try {

@@ -431,3 +431,116 @@ exports.updateCustomerDetails = async (req, res) => {
   }
 };
 
+exports.addCustomerDetailsAdvance=async(req,res)=>{
+try{
+const hotelId=req.params.id
+const roomId=req.body.roomId
+const roomType=req.body.roomType
+const floor=req.body.floor
+const roomNo=req.body.roomNo
+const customerName=req.body.customerName
+const customerAddress=req.body.customerAddress
+const customerPhoneNumber=req.body.customerPhoneNumber
+const frontDeskExecutiveName=req.body.frontDeskExecutiveName
+const hotelDetails=await hotel.findOne({_id:hotelId})
+hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,
+roomNo:roomNo,customerName:customerName,customerAddress:customerAddress,
+customerPhoneNumber:customerPhoneNumber,frontDeskExecutiveName:frontDeskExecutiveName})
+const hotelDetailData=await hotelDetails.save()
+res.status(200).send({mssg:'add advance customers',getAdvanceCustomerDetailsArray:hotelDetailData.advanceRoomArray})
+}catch (e) {
+  console.error(e);
+  res.status(401).send({ mssg: "add customer details advance failed" });
+}
+}
+
+exports.getCustomerDetailsAdvance=async(req,res)=>{
+  try{
+  const hotelId=req.params.id
+  const getAdvanceCustomerDetails=await hotel.findOne({_id:hotelId})
+  res.status(200).send({mssg:'get advance customers',getAdvanceCustomerDetailsArray:getAdvanceCustomerDetails.advanceRoomArray})
+  }catch(e){
+    console.error(e);
+    res.status(401).send({ mssg: 'get customer details failed' });
+  }
+  }
+
+  exports.deleteCustomerDetailsAdvance = async (req, res) => {
+    try {
+      const hotelId = req.params.id;
+      const customerId = req.body.customerId;
+  
+      const updatedHotel = await hotel.findByIdAndUpdate(
+        hotelId,
+        { $pull: {advanceRoomArray: { _id: customerId } } }, // directly remove
+        { new: true }
+      );
+  
+      if (!updatedHotel) {
+        return res.status(404).send({ mssg: "Hotel not found" });
+      }
+  
+      res.status(200).send({
+        mssg: "Customer details deleted successfully",
+        getAdvanceCustomerDetailsArray: updatedHotel.advanceRoomArray,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(401).send({ mssg: "Delete customer details failed" });
+    }
+  };
+  
+
+  exports.updateCustomerDetailsAdvance = async (req, res) => {
+    try {
+      const hotelId = req.params.id;
+      const roomId = req.body.roomId;
+      console.log('update room id',roomId)
+      const hotelDetails = await hotel.findOne({ _id: hotelId });
+      if (!hotelDetails) {
+        return res.status(404).send({ mssg: "Hotel not found" });
+      }
+  
+      // jis customer ka _id match kare use find karo
+      const customer = hotelDetails.roomArray.find(
+        (c) => c.roomId.toString() === roomId
+      );
+  
+      if (!customer) {
+        return res.status(404).send({ mssg: "Customer not found" });
+      }
+  
+      // new details assign karo
+      Object.assign(customer, {
+        customerName: req.body.customerName,
+        customerAddress: req.body.customerAddress,
+        customerPhoneNumber: req.body.customerPhoneNumber,
+        frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+      });
+  
+      const reportCustomer = hotelDetails.roomArray.find(
+        (c) => c.roomId.toString() === roomId
+      );
+  
+      if (!reportCustomer) {
+        return res.status(404).send({ mssg: "Customer not found" });
+      }
+      Object.assign(reportCustomer, {
+        customerName: req.body.customerName,
+        customerAddress: req.body.customerAddress,
+        customerPhoneNumber: req.body.customerPhoneNumber,
+        frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+      });
+  
+      await hotelDetails.save();
+  
+      res.status(200).send({
+        mssg: "Customer details advance updated successfully",
+        getAdvanceCustomerDetailsArray: hotelDetails.advanceRoomArray,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(401).send({ mssg: "Update customer details failed" });
+    }
+  };
+  
