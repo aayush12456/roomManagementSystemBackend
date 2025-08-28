@@ -438,12 +438,14 @@ const roomId=req.body.roomId
 const roomType=req.body.roomType
 const floor=req.body.floor
 const roomNo=req.body.roomNo
+const todayDate=req.body.todayDate
+const selectedDate=req.body.selectedDate
 const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
 const frontDeskExecutiveName=req.body.frontDeskExecutiveName
 const hotelDetails=await hotel.findOne({_id:hotelId})
-hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,
+hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,todayDate:todayDate,selectedDate:selectedDate,
 roomNo:roomNo,customerName:customerName,customerAddress:customerAddress,
 customerPhoneNumber:customerPhoneNumber,frontDeskExecutiveName:frontDeskExecutiveName})
 const hotelDetailData=await hotelDetails.save()
@@ -502,7 +504,7 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
       }
   
       // jis customer ka _id match kare use find karo
-      const customer = hotelDetails.roomArray.find(
+      const customer = hotelDetails.advanceRoomArray.find(
         (c) => c.roomId.toString() === roomId
       );
   
@@ -518,7 +520,7 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
         frontDeskExecutiveName: req.body.frontDeskExecutiveName,
       });
   
-      const reportCustomer = hotelDetails.roomArray.find(
+      const reportCustomer = hotelDetails.advanceRoomArray.find(
         (c) => c.roomId.toString() === roomId
       );
   

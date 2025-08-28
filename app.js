@@ -55,7 +55,13 @@ io.on('connection', (socket) => {
     socket.on('addCustomerDetailsAdvance',(message)=>{
         io.emit('getCustomerDetailsAdvance',message)
     })
-    
+    socket.on('deleteCustomerDetailsAdvance',(message)=>{
+        io.emit('getCustomerDetailsAdvance',message)
+    })
+
+    socket.on('updateCustomerDetailsAdvance',(message)=>{
+        io.emit('getCustomerDetailsAdvance',message)
+    })
 });
 
 module.exports = { io };
