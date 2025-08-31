@@ -163,6 +163,8 @@ const hotelSchema = mongoose.Schema({
           customerName: String,
           customerAddress: String,
           customerPhoneNumber: String,
+          totalPayment:String,
+          advancePayment:String,
           frontDeskExecutiveName: String,
           todayDate:String,
           selectedDate:String

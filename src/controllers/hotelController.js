@@ -443,10 +443,14 @@ const selectedDate=req.body.selectedDate
 const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
+const totalPayment=req.body.totalPayment
+const advancePayment=req.body.advancePayment
 const frontDeskExecutiveName=req.body.frontDeskExecutiveName
+
 const hotelDetails=await hotel.findOne({_id:hotelId})
+
 hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,todayDate:todayDate,selectedDate:selectedDate,
-roomNo:roomNo,customerName:customerName,customerAddress:customerAddress,
+roomNo:roomNo,customerName:customerName,customerAddress:customerAddress, totalPayment:totalPayment,advancePayment:advancePayment,
 customerPhoneNumber:customerPhoneNumber,frontDeskExecutiveName:frontDeskExecutiveName})
 const hotelDetailData=await hotelDetails.save()
 res.status(200).send({mssg:'add advance customers',getAdvanceCustomerDetailsArray:hotelDetailData.advanceRoomArray})
