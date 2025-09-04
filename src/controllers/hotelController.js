@@ -315,7 +315,7 @@ hotelDetails.reportArray.push(
   })
 const data=await hotelDetails.save()
 console.log('data us',data)
-res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray})
+res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray,reportArray:hotelDetails.reportArray})
 }catch(e){
   console.error(e);
   res.status(401).send({ mssg: 'customer addition failed' });
@@ -326,7 +326,7 @@ exports.getCustomerDetails=async(req,res)=>{
 try{
 const hotelId=req.params.id
 const getCustomerDetails=await hotel.findOne({_id:hotelId})
-res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray})
+res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray,reportArray:getCustomerDetails.reportArray})
 }catch(e){
   console.error(e);
   res.status(401).send({ mssg: 'get customer details failed' });
@@ -358,65 +358,131 @@ exports.deleteCustomerDetails = async (req, res) => {
   }
 };
 
+// exports.updateCustomerDetails = async (req, res) => {
+//   try {
+//     const hotelId = req.params.id;
+//     const roomId = req.body.roomId;
+//     console.log('update room id',roomId)
+//     const hotelDetails = await hotel.findOne({ _id: hotelId });
+//     if (!hotelDetails) {
+//       return res.status(404).send({ mssg: "Hotel not found" });
+//     }
+
+//     // jis customer ka _id match kare use find karo
+//     const customer = hotelDetails.roomArray.find(
+//       (c) => c.roomId === roomId
+//     );
+
+//     if (!customer) {
+//       return res.status(404).send({ mssg: "Customer not found" });
+//     }
+
+//     // new details assign karo
+//     Object.assign(customer, {
+//       customerName: req.body.customerName,
+//       customerAddress: req.body.customerAddress,
+//       customerPhoneNumber: req.body.customerPhoneNumber,
+//       totalCustomer: req.body.totalCustomer,
+//       customerAadharNumber: req.body.customerAadharNumber,
+//       customerCity: req.body.customerCity,
+//       checkInDate: req.body.checkInDate,
+//       checkInTime: req.body.checkInTime,
+//       checkOutDate: req.body.checkOutDate,
+//       checkOutTime: req.body.checkOutTime,
+//       totalPayment: req.body.totalPayment,
+//       paymentPaid: req.body.paymentPaid,
+//       paymentDue: req.body.paymentDue,
+//       frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+//     });
+
+//     const reportCustomer = hotelDetails.reportArray.find(
+//       (c) => c.roomId === roomId
+//     );
+//     console.log('report array find',reportCustomer)
+//     if (!reportCustomer) {
+//       return res.status(404).send({ mssg: "Customer not found" });
+//     }
+//     Object.assign(reportCustomer, {
+//       customerName: req.body.customerName,
+//       customerAddress: req.body.customerAddress,
+//       customerPhoneNumber: req.body.customerPhoneNumber,
+//       totalCustomer: req.body.totalCustomer,
+//       customerAadharNumber: req.body.customerAadharNumber,
+//       customerCity: req.body.customerCity,
+//       checkInDate: req.body.checkInDate,
+//       checkInTime: req.body.checkInTime,
+//       checkOutDate: req.body.checkOutDate,
+//       checkOutTime: req.body.checkOutTime,
+//       totalPayment: req.body.totalPayment,
+//       paymentPaid: req.body.paymentPaid,
+//       paymentDue: req.body.paymentDue,
+//       frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+//     });
+
+//     await hotelDetails.save();
+
+//     res.status(200).send({
+//       mssg: "Customer details updated successfully",
+//       getCustomerDetailsArray: hotelDetails.roomArray,reportArray:hotelDetails.reportArray
+//     });
+//   } catch (e) {
+//     console.error(e);
+//     res.status(401).send({ mssg: "Update customer details failed" });
+//   }
+// };
 exports.updateCustomerDetails = async (req, res) => {
   try {
     const hotelId = req.params.id;
     const roomId = req.body.roomId;
-    console.log('update room id',roomId)
+    console.log('update room id', roomId);
+
     const hotelDetails = await hotel.findOne({ _id: hotelId });
     if (!hotelDetails) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
 
-    // jis customer ka _id match kare use find karo
-    const customer = hotelDetails.roomArray.find(
-      (c) => c.roomId.toString() === roomId
-    );
-
-    if (!customer) {
-      return res.status(404).send({ mssg: "Customer not found" });
-    }
-
-    // new details assign karo
-    Object.assign(customer, {
-      customerName: req.body.customerName,
-      customerAddress: req.body.customerAddress,
-      customerPhoneNumber: req.body.customerPhoneNumber,
-      totalCustomer: req.body.totalCustomer,
-      customerAadharNumber: req.body.customerAadharNumber,
-      customerCity: req.body.customerCity,
-      checkInDate: req.body.checkInDate,
-      checkInTime: req.body.checkInTime,
-      checkOutDate: req.body.checkOutDate,
-      checkOutTime: req.body.checkOutTime,
-      totalPayment: req.body.totalPayment,
-      paymentPaid: req.body.paymentPaid,
-      paymentDue: req.body.paymentDue,
-      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+    // ✅ roomArray me jis jis ka roomId match kare, sab update karo
+    hotelDetails.roomArray.forEach((customer) => {
+      if (customer.roomId === roomId) {
+        Object.assign(customer, {
+          customerName: req.body.customerName,
+          customerAddress: req.body.customerAddress,
+          customerPhoneNumber: req.body.customerPhoneNumber,
+          totalCustomer: req.body.totalCustomer,
+          customerAadharNumber: req.body.customerAadharNumber,
+          customerCity: req.body.customerCity,
+          checkInDate: req.body.checkInDate,
+          checkInTime: req.body.checkInTime,
+          checkOutDate: req.body.checkOutDate,
+          checkOutTime: req.body.checkOutTime,
+          totalPayment: req.body.totalPayment,
+          paymentPaid: req.body.paymentPaid,
+          paymentDue: req.body.paymentDue,
+          frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+        });
+      }
     });
 
-    const reportCustomer = hotelDetails.roomArray.find(
-      (c) => c.roomId.toString() === roomId
-    );
-
-    if (!reportCustomer) {
-      return res.status(404).send({ mssg: "Customer not found" });
-    }
-    Object.assign(reportCustomer, {
-      customerName: req.body.customerName,
-      customerAddress: req.body.customerAddress,
-      customerPhoneNumber: req.body.customerPhoneNumber,
-      totalCustomer: req.body.totalCustomer,
-      customerAadharNumber: req.body.customerAadharNumber,
-      customerCity: req.body.customerCity,
-      checkInDate: req.body.checkInDate,
-      checkInTime: req.body.checkInTime,
-      checkOutDate: req.body.checkOutDate,
-      checkOutTime: req.body.checkOutTime,
-      totalPayment: req.body.totalPayment,
-      paymentPaid: req.body.paymentPaid,
-      paymentDue: req.body.paymentDue,
-      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+    // ✅ reportArray me bhi same update
+    hotelDetails.reportArray.forEach((reportCustomer) => {
+      if (reportCustomer.roomId === roomId) {
+        Object.assign(reportCustomer, {
+          customerName: req.body.customerName,
+          customerAddress: req.body.customerAddress,
+          customerPhoneNumber: req.body.customerPhoneNumber,
+          totalCustomer: req.body.totalCustomer,
+          customerAadharNumber: req.body.customerAadharNumber,
+          customerCity: req.body.customerCity,
+          checkInDate: req.body.checkInDate,
+          checkInTime: req.body.checkInTime,
+          checkOutDate: req.body.checkOutDate,
+          checkOutTime: req.body.checkOutTime,
+          totalPayment: req.body.totalPayment,
+          paymentPaid: req.body.paymentPaid,
+          paymentDue: req.body.paymentDue,
+          frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+        });
+      }
     });
 
     await hotelDetails.save();
@@ -424,6 +490,7 @@ exports.updateCustomerDetails = async (req, res) => {
     res.status(200).send({
       mssg: "Customer details updated successfully",
       getCustomerDetailsArray: hotelDetails.roomArray,
+      reportArray: hotelDetails.reportArray,
     });
   } catch (e) {
     console.error(e);
