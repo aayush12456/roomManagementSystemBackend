@@ -10,6 +10,18 @@ const hotelSchema = mongoose.Schema({
         minLength: 3,
         unique:true
       },
+      hotelAddress: {
+        type: String,
+        required: true,
+        minLength: 3,
+        unique:true
+      },
+      hotelRegistrationNumber: {
+        type: String,
+        required: true,
+        minLength: 3,
+        unique:true
+      },
       checkOutTime: {
         type: String,
         required: true,
@@ -114,8 +126,11 @@ const hotelSchema = mongoose.Schema({
           customerAddress: String,
           customerPhoneNumber: String,
           totalCustomer: String,
-          customerAadharNumber: String,
+          customerIdProof: String,
           customerCity: String,
+          customerOccupation: String,
+          customerDestination: String,
+          reasonToStay:String,
           checkInDate: String,
           checkInTime: String,
           checkOutDate: String,
@@ -139,8 +154,11 @@ const hotelSchema = mongoose.Schema({
           customerAddress: String,
           customerPhoneNumber: String,
           totalCustomer: String,
-          customerAadharNumber: String,
+          customerIdProof: String,
           customerCity: String,
+          customerOccupation: String,
+          customerDestination: String,
+          reasonToStay:String,
           checkInDate: String,
           checkInTime: String,
           checkOutDate: String,

@@ -129,6 +129,8 @@ if (req.body.roomData) {
 
     const hotelData=new hotel({
       hotelName:req.body.hotelName,
+      hotelAddress:req.body.hotelAddress,
+      hotelRegistrationNumber:req.body.hotelRegistrationNumber,
       owner1:req.body.owner1,
       owner2:req.body.owner2,
       owner3:req.body.owner3,
@@ -168,6 +170,12 @@ if (req.body.roomData) {
   
         // Check owner2
         if (hotel.owner2 && hotel.owner2.phone === phone) {
+          isMatched = true;
+        }
+        if (hotel.owner3 && hotel.owner3.phone === phone) {
+          isMatched = true;
+        }
+        if (hotel.owner3 && hotel.owner3.phone === phone) {
           isMatched = true;
         }
   
@@ -273,8 +281,11 @@ const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
 const totalCustomer=req.body.totalCustomer
-const customerAadharNumber=req.body.customerAadharNumber
+const customerIdProof=req.body.customerIdProof
 const customerCity=req.body.customerCity
+const customerOccupation=req.body.customerOccupation
+const customerDestination=req.body.customerDestination
+const reasonToStay=req.body.reasonToStay
 const checkInDate=req.body.checkInDate
 const checkInTime=req.body.checkInTime
 const checkOutDate=req.body.checkOutDate
@@ -300,7 +311,7 @@ const hotelDetails=await hotel.findOne({_id:hotelId})
 
 hotelDetails.roomArray.push(
 {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
+totalCustomer:totalCustomer,customerIdProof:customerIdProof,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
 customerSignature: signatureUrl
@@ -308,7 +319,7 @@ customerSignature: signatureUrl
 
 hotelDetails.reportArray.push(
   {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-  totalCustomer:totalCustomer,customerAadharNumber:customerAadharNumber,customerCity:customerCity,
+  totalCustomer:totalCustomer,customerIdProof:customerIdProof,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
   checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
   customerSignature: signatureUrl
@@ -449,8 +460,11 @@ exports.updateCustomerDetails = async (req, res) => {
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
           totalCustomer: req.body.totalCustomer,
-          customerAadharNumber: req.body.customerAadharNumber,
+          customerIdProof: req.body.customerIdProof,
           customerCity: req.body.customerCity,
+          customerOccupation:req.body.customerOccupation,
+          customerDestination:req.body.customerDestination,
+           reasonToStay:req.body.reasonToStay,
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
@@ -471,8 +485,11 @@ exports.updateCustomerDetails = async (req, res) => {
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
           totalCustomer: req.body.totalCustomer,
-          customerAadharNumber: req.body.customerAadharNumber,
+          customerIdProof: req.body.customerIdProof,
           customerCity: req.body.customerCity,
+          customerOccupation:req.body.customerOccupation,
+          customerDestination:req.body.customerDestination,
+           reasonToStay:req.body.reasonToStay,
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
