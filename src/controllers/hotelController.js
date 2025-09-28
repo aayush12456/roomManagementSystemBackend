@@ -210,6 +210,7 @@ if (req.body.roomData) {
 exports.getOtp=async(req,res)=>{
 try{
 const phone=req.body.phone
+console.log('phone in otp',phone)
 const randomCode = generateRandomCode();
 let message =  `Your Login OTP is ${randomCode}`;
 await client.messages.create({
@@ -248,7 +249,7 @@ const matchedHotels = allHotel.filter(hotel => {
 });
 const matchObj=matchedHotels[0]
 const token = await matchObj.generateAuthToken();
-res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token})
+res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token,phone:phone})
 }catch(e){
   console.error(e);
   res.status(401).send({ mssg: 'comparison failed' });
@@ -281,7 +282,9 @@ const customerName=req.body.customerName
 const customerAddress=req.body.customerAddress
 const customerPhoneNumber=req.body.customerPhoneNumber
 const totalCustomer=req.body.totalCustomer
+const relation=req.body.relation
 const customerIdProof=req.body.customerIdProof
+const customerAadharNumber=req.body.customerAadharNumber
 const customerCity=req.body.customerCity
 const customerOccupation=req.body.customerOccupation
 const customerDestination=req.body.customerDestination
@@ -289,6 +292,7 @@ const reasonToStay=req.body.reasonToStay
 const checkInDate=req.body.checkInDate
 const checkInTime=req.body.checkInTime
 const checkOutDate=req.body.checkOutDate
+const personalCheckOutTime=req.body.personalCheckOutTime
 const checkOutTime=req.body.checkOutTime
 const totalPayment=req.body.totalPayment
 const paymentPaid=req.body.paymentPaid
@@ -311,16 +315,16 @@ const hotelDetails=await hotel.findOne({_id:hotelId})
 
 hotelDetails.roomArray.push(
 {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-totalCustomer:totalCustomer,customerIdProof:customerIdProof,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
-checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
+totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof, customerAadharNumber:customerAadharNumber, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
+checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
 customerSignature: signatureUrl
 })
 
 hotelDetails.reportArray.push(
   {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-  totalCustomer:totalCustomer,customerIdProof:customerIdProof,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
-  checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,checkOutTime:checkOutTime,
+  totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerAadharNumber:customerAadharNumber,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
+  checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
   customerSignature: signatureUrl
   })
@@ -358,7 +362,6 @@ exports.deleteCustomerDetails = async (req, res) => {
     if (!updatedHotel) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
-
     res.status(200).send({
       mssg: "Customer details deleted successfully",
       getCustomerDetailsArray: updatedHotel.roomArray,
@@ -460,7 +463,9 @@ exports.updateCustomerDetails = async (req, res) => {
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
           totalCustomer: req.body.totalCustomer,
+          relation:req.body.relation,
           customerIdProof: req.body.customerIdProof,
+          customerAadharNumber:req.body.customerAadharNumber,
           customerCity: req.body.customerCity,
           customerOccupation:req.body.customerOccupation,
           customerDestination:req.body.customerDestination,
@@ -468,6 +473,7 @@ exports.updateCustomerDetails = async (req, res) => {
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
+          personalCheckOutTime:req.body.personalCheckOutTime,
           checkOutTime: req.body.checkOutTime,
           totalPayment: req.body.totalPayment,
           paymentPaid: req.body.paymentPaid,
@@ -485,7 +491,9 @@ exports.updateCustomerDetails = async (req, res) => {
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
           totalCustomer: req.body.totalCustomer,
+          relation:req.body.relation,
           customerIdProof: req.body.customerIdProof,
+          customerAadharNumber:req.body.customerAadharNumber,
           customerCity: req.body.customerCity,
           customerOccupation:req.body.customerOccupation,
           customerDestination:req.body.customerDestination,
@@ -493,6 +501,7 @@ exports.updateCustomerDetails = async (req, res) => {
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
+          personalCheckOutTime:req.body.personalCheckOutTime,
           checkOutTime: req.body.checkOutTime,
           totalPayment: req.body.totalPayment,
           paymentPaid: req.body.paymentPaid,
@@ -633,4 +642,60 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
       res.status(401).send({ mssg: "Update customer details failed" });
     }
   };
-  
+  exports.deleteReportCustomerDetails = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const customerId = req.body.customerId;
+
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { reportArray: { _id: customerId } } }, // directly remove
+      { new: true }
+    );
+
+    if (!updatedHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+    const io = req.app.locals.io;
+    io.emit('updateCustomerDetails', {
+      hotelId: hotelId,
+      reportArray: updatedHotel.reportArray,
+    });
+    res.status(200).send({
+      mssg: "Customer details deleted successfully",
+      getCustomerDetailsArray: updatedHotel.reportArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Delete customer details failed" });
+  }
+};
+
+exports.deletePersonalCustomerDetails = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const customerId = req.body.customerId;
+
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { roomArray: { _id: customerId } } }, // directly remove
+      { new: true }
+    );
+
+    if (!updatedHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+    const io = req.app.locals.io;
+    io.emit('updatePersonalCustomerDetails', {
+      hotelId: hotelId,
+      getCustomerDetailsArray: updatedHotel.roomArray,
+    });
+    res.status(200).send({
+      mssg: "Customer details deleted successfully",
+      getCustomerDetailsArray: updatedHotel.roomArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Delete customer details failed" });
+  }
+};

@@ -33,6 +33,11 @@ const hotelSchema = mongoose.Schema({
           required: true,
           trim: true,
         },
+        address: {
+          type: String,
+          required: true,
+          trim: true,
+        },
         phone: {
           type: String,
           required: true,
@@ -45,6 +50,10 @@ const hotelSchema = mongoose.Schema({
       },
       owner2: {
         name: {
+          type: String,
+          trim: true,
+        },
+        address: {
           type: String,
           trim: true,
         },
@@ -61,6 +70,10 @@ const hotelSchema = mongoose.Schema({
           type: String,
           trim: true,
         },
+        address: {
+          type: String,
+          trim: true,
+        },
         phone: {
           type: String,
           match: /^[0-9]{10}$/, // basic 10-digit phone validation
@@ -71,6 +84,10 @@ const hotelSchema = mongoose.Schema({
       },
       owner4: {
         name: {
+          type: String,
+          trim: true,
+        },
+        address: {
           type: String,
           trim: true,
         },
@@ -126,7 +143,9 @@ const hotelSchema = mongoose.Schema({
           customerAddress: String,
           customerPhoneNumber: String,
           totalCustomer: String,
+          relation:String,
           customerIdProof: String,
+          customerAadharNumber:String,
           customerCity: String,
           customerOccupation: String,
           customerDestination: String,
@@ -134,6 +153,7 @@ const hotelSchema = mongoose.Schema({
           checkInDate: String,
           checkInTime: String,
           checkOutDate: String,
+          personalCheckOutTime:String,
           checkOutTime: String,
           totalPayment: String,
           paymentPaid:String,
@@ -154,7 +174,9 @@ const hotelSchema = mongoose.Schema({
           customerAddress: String,
           customerPhoneNumber: String,
           totalCustomer: String,
+          relation:String,
           customerIdProof: String,
+          customerAadharNumber:String,
           customerCity: String,
           customerOccupation: String,
           customerDestination: String,
@@ -162,6 +184,7 @@ const hotelSchema = mongoose.Schema({
           checkInDate: String,
           checkInTime: String,
           checkOutDate: String,
+          personalCheckOutTime:String,
           checkOutTime: String,
           totalPayment: String,
           paymentPaid:String,

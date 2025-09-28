@@ -10,6 +10,10 @@ const roomSchema = new mongoose.Schema({
   bedType: {
     type: String,
     required: true,
+  },
+  number:{
+    type: String,
+    required: true,
   }
 });
 
