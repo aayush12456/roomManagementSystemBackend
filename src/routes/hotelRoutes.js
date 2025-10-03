@@ -30,4 +30,6 @@ const upload = multer({
   router.post('/deleteCustomerDetailsAdvance/:id',hotelController.deleteCustomerDetailsAdvance)
   router.post('/updateCustomerDetailsAdvance/:id',hotelController.updateCustomerDetailsAdvance)
   router.post('/deleteReportCustomerDetails/:id',hotelController.deleteReportCustomerDetails)
+  router.post('/updateMyProfile',upload.single("updateImg"),hotelController.updateMyProfile)
+  router.post('/addStaff',upload.single("staffImg"),hotelController.addStaffDetails)
   module.exports = router;

@@ -20,6 +20,11 @@ const staffSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  address: {
+    type: String,
+    required: true,
+  },
+  imagePublicId: { type: String }
 });
 
 module.exports = staffSchema;

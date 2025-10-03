@@ -153,58 +153,105 @@ if (req.body.roomData) {
         res.status(401).send({ mssg: 'Data does not added' });
     }
   };
-  exports.getHotelName = async (req, res) => {
-    try {
-      const phone = req.body.phone;
-      const allHotels = await hotel.find().lean();
+  // exports.getHotelName = async (req, res) => {
+  //   try {
+  //     const phone = req.body.phone;
+  //     const allHotels = await hotel.find().lean();
   
-      const matchedHotelNames = [];
+  //     const matchedHotelNames = [];
   
-      allHotels.forEach(hotel => {
-        let isMatched = false;
+  //     allHotels.forEach(hotel => {
+  //       let isMatched = false;
   
-        // Check owner1
-        if (hotel.owner1 && hotel.owner1.phone === phone) {
-          isMatched = true;
-        }
+  //       // Check owner1
+  //       if (hotel.owner1 && hotel.owner1.phone === phone) {
+  //         isMatched = true;
+  //       }
   
-        // Check owner2
-        if (hotel.owner2 && hotel.owner2.phone === phone) {
-          isMatched = true;
-        }
-        if (hotel.owner3 && hotel.owner3.phone === phone) {
-          isMatched = true;
-        }
-        if (hotel.owner3 && hotel.owner3.phone === phone) {
-          isMatched = true;
-        }
+  //       // Check owner2
+  //       if (hotel.owner2 && hotel.owner2.phone === phone) {
+  //         isMatched = true;
+  //       }
+  //       if (hotel.owner3 && hotel.owner3.phone === phone) {
+  //         isMatched = true;
+  //       }
+  //       if (hotel.owner3 && hotel.owner3.phone === phone) {
+  //         isMatched = true;
+  //       }
   
-        // Check staff
-        if (hotel.staff) {
-          Object.values(hotel.staff).forEach(staffMember => {
-            if (staffMember.phone === phone) {
-              isMatched = true;
-            }
-          });
-        }
+  //       // Check staff
+  //       if (hotel.staff) {
+  //         Object.values(hotel.staff).forEach(staffMember => {
+  //           if (staffMember.phone === phone) {
+  //             isMatched = true;
+  //           }
+  //         });
+  //       }
   
-        if (isMatched) {
-          matchedHotelNames.push(hotel.hotelName || null); // null only if hotelName missing
-        }
-      });
+  //       if (isMatched) {
+  //         matchedHotelNames.push(hotel.hotelName || null); // null only if hotelName missing
+
+  //       }
+  //     });
   
-      res.status(200).send({
-        mssg: 'get hotel name',
-        matchedNames: matchedHotelNames,
-      });
+  //     res.status(200).send({
+  //       mssg: 'get hotel name',
+  //       matchedNames: matchedHotelNames,
+  //     });
   
-    } catch (e) {
-      console.error(e);
-      res.status(401).send({ mssg: 'login failed' });
-    }
-  };
+  //   } catch (e) {
+  //     console.error(e);
+  //     res.status(401).send({ mssg: 'login failed' });
+  //   }
+  // };
+
+
   const generateRandomCode = () => {
     return Math.floor(10000 + Math.random() * 90000).toString();
+};
+
+exports.getHotelName = async (req, res) => {
+  try {
+    const phone = String(req.body.phone || '').trim(); // normalize
+    const allHotels = await hotel.find().lean();
+
+    const matchedHotelNames = [];
+
+    allHotels.forEach(hotel => {
+      let isMatched = false;
+
+      // Check owners
+      if (hotel.owner1?.phone?.trim() === phone) isMatched = true;
+      if (hotel.owner2?.phone?.trim() === phone) isMatched = true;
+      if (hotel.owner3?.phone?.trim() === phone) isMatched = true;
+      if (hotel.owner4?.phone?.trim() === phone) isMatched = true;
+
+      // Check staff
+      if (hotel.staff) {
+        Object.values(hotel.staff).forEach(staffMember => {
+          if (String(staffMember?.phone || '').trim() === phone) {
+            isMatched = true;
+          }
+        });
+      }
+
+      if (isMatched) {
+        matchedHotelNames.push({
+          hotelName: hotel.hotelName || null,
+          hotelId: hotel._id.toString(),
+        });
+      }
+    });
+
+    res.status(200).send({
+      mssg: 'get hotel name',
+      matchedNames: matchedHotelNames,
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'login failed', error: e.message });
+  }
 };
 
 exports.getOtp=async(req,res)=>{
@@ -213,11 +260,11 @@ const phone=req.body.phone
 console.log('phone in otp',phone)
 const randomCode = generateRandomCode();
 let message =  `Your Login OTP is ${randomCode}`;
-await client.messages.create({
-  body: message,
-  from: '+15802093842',
-  to: '+91' + phone, // User's phone number
-});
+// await client.messages.create({
+//   body: message,
+//   from: '+15802093842',
+//   to: '+91' + phone, // User's phone number
+// });
 res.status(201).send({
   mssg: 'otp send Successfully',
   otp: randomCode,
@@ -229,32 +276,94 @@ res.status(201).send({
 }
   }
 
-exports.compareOtp=async(req,res)=>{
-try{
-const phone=req.body.phone
-const hotelName=req.body.hotelName
-const allHotel=await hotel.find()
-const matchedHotels = allHotel.filter(hotel => {
-  return (
-    (
-      hotel.owner1?.phone === phone ||
-      hotel.owner2?.phone === phone ||
-      hotel.owner3?.phone === phone ||
-      hotel.owner4?.phone === phone ||
-      Object.values(hotel.staff || {}).some(staff => staff.phone === phone)
-    )
-    &&
-    hotel.hotelName?.trim().toLowerCase() === hotelName?.trim().toLowerCase()
-  );
-});
-const matchObj=matchedHotels[0]
-const token = await matchObj.generateAuthToken();
-res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token,phone:phone})
-}catch(e){
-  console.error(e);
-  res.status(401).send({ mssg: 'comparison failed' });
-}
-}  
+// exports.compareOtp=async(req,res)=>{
+// try{
+// const phone=req.body.phone
+// console.log('phone',phone)
+// const hotelName=req.body.hotelName
+// console.log('hotel name',hotelName)
+// const hotelId=req.body.hotelId
+// const allHotel=await hotel.find()
+// const matchedHotels = allHotel.filter(hotel => {
+//   console.log('hotel is compare',hotel)
+//   return (
+//     (
+//       hotel.owner1?.phone === phone ||
+//       hotel.owner2?.phone === phone ||
+//       hotel.owner3?.phone === phone ||
+//       hotel.owner4?.phone === phone ||
+//       Object.values(hotel.staff || {}).some(staff => staff.phone === phone)
+//     )
+//     &&
+//     hotel.hotelName?.trim().toLowerCase() === hotelName?.trim().toLowerCase()
+//   );
+// });
+// console.log('match hotels',matchedHotels)
+// const matchObj=matchedHotels[0]
+// console.log('match obj',matchObj)
+// const token = await matchObj.generateAuthToken();
+// res.status(200).send({mssg:'fetch data',matchedHotels:matchedHotels,token:token,phone:phone})
+// }catch(e){
+//   console.error(e);
+//   res.status(401).send({ mssg: 'comparison failed' });
+// }
+// }  
+exports.compareOtp = async (req, res) => {
+  try {
+    const phone = String(req.body.phone || '').trim();
+    const hotelName = String(req.body.hotelName || '').trim().toLowerCase();
+    const hotelId = req.body.hotelId;
+
+    // Single hotel find karo
+    const matchHotel = await hotel.findById(hotelId);
+    if (!matchHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    let isMatched = false;
+
+    // Owners check karo
+    if (matchHotel.owner1?.phone?.trim() === phone) isMatched = true;
+    if (matchHotel.owner2?.phone?.trim() === phone) isMatched = true;
+    if (matchHotel.owner3?.phone?.trim() === phone) isMatched = true;
+    if (matchHotel.owner4?.phone?.trim() === phone) isMatched = true;
+
+    // Staff check karo (staff1, staff2, ... unlimited)
+    if (matchHotel.staff) {
+      for (const staffMember of Object.values(matchHotel.staff)) {
+        if (String(staffMember?.phone || '').trim() === phone) {
+          isMatched = true;
+          break;
+        }
+      }
+    }
+
+    // Hotel name bhi match karna hai
+    const isHotelNameMatch =
+      (matchHotel.hotelName || '').trim().toLowerCase() === hotelName;
+console.log('is hotel match',isHotelNameMatch)
+    if (isMatched || isHotelNameMatch) {
+      // Yahi hotel match hai
+      const token = await matchHotel.generateAuthToken();
+      return res.status(200).send({
+        mssg: "fetch data",
+        matchedHotels: [matchHotel],
+        token: token,
+        phone: phone,
+      });
+    } else {
+      return res.status(401).send({
+        mssg: "No match found for given phone and hotelName",
+      });
+    }
+  } catch (e) {
+    console.error("CompareOtp error:", e);
+    res.status(500).send({
+      mssg: "comparison failed",
+      error: e.message,
+    });
+  }
+};
 
 exports.getRoomDetails=async(req,res)=>{
 try{
@@ -697,5 +806,401 @@ exports.deletePersonalCustomerDetails = async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(401).send({ mssg: "Delete customer details failed" });
+  }
+};
+
+
+// exports.updateMyProfile = async (req, res) => {
+//   try {
+//     console.log('body',req.body)
+//     // const hotelId = req.body.id;
+//     console.log('hotel id update',hotelId)
+//     const { staffId,  address, post } = req.body || {};
+//     const newImage = req.file; // assuming multer is used for single upload
+
+//     const hotelObj = await hotel.findOne({ _id: hotelId });
+//     console.log('hotel obj',hotelObj)
+//     if (!hotelObj) {
+//       return res.status(404).send({ mssg: "Hotel not found" });
+//     }
+
+//     let updated = false;
+
+//     // ========== Case 1: Update Owner ==========
+//     if (post === "Owner") {
+//       for (let i = 1; i <= 4; i++) {
+//         const key = `Owner${i}`;
+//         const owner = hotelObj[key];
+//         if (owner && owner.phone === phone) {
+//           // update phone & address
+//           if (req.body.newPhone) owner.phone = req.body.newPhone;
+//           if (address) owner.address = address;
+
+//           // update image if new provided
+//           if (newImage) {
+//             if (owner.image?.public_id) {
+//               await cloudinary.uploader.destroy(owner.image.public_id);
+//             }
+//             const result = await cloudinary.uploader.upload(newImage.path, {
+//               folder: "ownerImages",
+//             });
+//             owner.image = { url: result.secure_url, public_id: result.public_id };
+//           }
+//           updated = true;
+//           break;
+//         }
+//       }
+//     }
+
+//     // ========== Case 2: Update Staff ==========
+//     if (staffId) {
+//       const staffMember = hotelObj.staffArray.find((st) => st._id.toString() === staffId);
+//       if (staffMember) {
+//         if (req.body.newPhone) staffMember.phone = req.body.newPhone;
+//         if (address) staffMember.address = address;
+
+//         if (newImage) {
+//           if (staffMember.image?.public_id) {
+//             await cloudinary.uploader.destroy(staffMember.image.public_id);
+//           }
+//           const result = await cloudinary.uploader.upload(newImage.path, {
+//             folder: "staffImages",
+//           });
+//           staffMember.image = { url: result.secure_url, public_id: result.public_id };
+//         }
+//         updated = true;
+//       }
+//     }
+
+//     if (!updated) {
+//       return res.status(400).send({ mssg: "No matching owner/staff found to update" });
+//     }
+
+//     const updatedHotel = await hotelObj.save();
+
+//     res.status(200).send({
+//       mssg: "Profile updated successfully",
+//       updatedData: updatedHotel,
+//     });
+//   } catch (e) {
+//     console.error("Update error:", e);
+//     res.status(500).send({ mssg: "Update customer profile failed", error: e.message });
+//   }
+// };
+
+
+// exports.updateMyProfile = async (req, res) => {
+//   try {
+//     const hotelId=req.body.id
+//     const phone=req.body.phone
+//     const oldPhone=req.body.oldPhone
+//     const address=req.body.address
+//     const updateImg=req.body.updateImg
+//   const staffId=req.body.staffId
+//   const hotelObj = await hotel.findOne({ _id: hotelId });
+//   console.log('hotel obj',hotelObj)
+//     res.status(200).send({
+//       mssg: "Profile updated successfully",
+//       updatedData: req.body,
+//     });
+//   } catch (e) {
+//     console.error("Update error:", e);
+//     res.status(500).send({ mssg: "Update customer profile failed", error: e.message });
+//   }
+// };
+
+//new
+// exports.updateMyProfile = async (req, res) => {
+//   console.log('body is',req.body)
+//   try {
+//     const hotelId = req.body.id;
+//     const phone = req.body.phone;
+//     const oldPhone = req.body.oldPhone;
+//     const address = req.body.address;
+//     const staffId=req.body.staffId
+//     console.log('staff id',staffId)
+//     const updateImg = req.file;
+//     console.log('update img',updateImg)
+
+//     const hotelObj = await hotel.findById(hotelId);
+//     console.log('hotel obj',hotelObj)
+//     if (!hotelObj) {
+//       return res.status(404).send({ mssg: "Hotel not found" });
+//     }
+
+//     // Find matching owner by oldPhone
+//     let updatedOwner = null;
+//     for (let key of Object.keys(hotelObj.toObject())) {
+//       if (key.startsWith("owner") && hotelObj[key]?.phone === oldPhone) {
+//         updatedOwner = hotelObj[key]; // <-- return the full owner object
+//         break;
+//       }
+//     }
+// console.log('update owner',updatedOwner)
+//     if (!updatedOwner) {
+//       return res.status(404).send({ mssg: "Owner with oldPhone not found" });
+//     }
+
+//     // Upload new image if provided
+//     if (updateImg) {
+//       if (updatedOwner.imagePublicId) {
+//         await cloudinary.uploader.destroy(updatedOwner.imagePublicId);
+//         console.log("Old image deleted:", updatedOwner.imagePublicId);
+//       }
+
+//       const result = await cloudinary.uploader.upload(updateImg.path, {
+//         folder: 'ownerImages'
+//       });
+
+//       if (!result || !result.secure_url) {
+//         throw new Error('Cloudinary image upload failed');
+//       }
+//       console.log('result is',result.secure_url)
+//       updatedOwner.image = result.secure_url; // update the owner image
+//       updatedOwner.imagePublicId = result.public_id;
+//     }
+//      updatedOwner.address=address
+//      updatedOwner.phone=phone
+     
+   
+//     await hotelObj.save()
+//     res.status(200).send({
+//       mssg: "Profile updated successfully",
+//       updatedData:hotelObj,
+//       // updateImg:updatedOwner.image
+//       oldPhone:oldPhone,
+//       newPhone:phone
+
+//     });
+//   } catch (e) {
+//     console.error("Update error:", e);
+//     res.status(500).send({
+//       mssg: "Update customer profile failed",
+//       error: e.message,
+//     });
+//   }
+// };
+exports.updateMyProfile = async (req, res) => {
+  console.log('body is', req.body);
+  try {
+    const hotelId = req.body.id;
+    const phone = req.body.phone;
+    const oldPhone = req.body.oldPhone;
+    const address = req.body.address;
+    const staffId = req.body.staffId;
+    console.log('staff id', staffId);
+    const updateImg = req.file;
+    console.log('update img', updateImg);
+
+    const hotelObj = await hotel.findById(hotelId);
+    console.log('hotel obj', hotelObj);
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    // ---------------- Staff update check ----------------
+    if (staffId) {
+      // staff Map ke andar iterate
+      let matchedStaff = null;
+      for (let [key, staff] of hotelObj.staff.entries()) {
+        if (staff._id.toString() === staffId.toString()) {
+          matchedStaff = staff;
+          break;
+        }
+      }
+
+      if (!matchedStaff) {
+        return res.status(404).send({ mssg: "Staff with staffId not found" });
+      }
+
+      console.log("Matched Staff:", matchedStaff);
+
+      // Agar update karna ho staff details bhi update kar do
+      if (updateImg) {
+        if (matchedStaff.imagePublicId) {
+          await cloudinary.uploader.destroy(matchedStaff.imagePublicId);
+          console.log("Old staff image deleted:", matchedStaff.imagePublicId);
+        }
+
+        const result = await cloudinary.uploader.upload(updateImg.path, {
+          folder: "staffImages",
+        });
+
+        if (!result || !result.secure_url) {
+          throw new Error("Cloudinary staff image upload failed");
+        }
+
+        matchedStaff.image = result.secure_url;
+        matchedStaff.imagePublicId = result.public_id;
+      }
+
+      matchedStaff.address = address || matchedStaff.address;
+      matchedStaff.phone = phone || matchedStaff.phone;
+
+      await hotelObj.save();
+
+      return res.status(200).send({
+        mssg: "Staff profile updated successfully",
+        updatedData:hotelObj,
+        oldPhone: oldPhone,
+        newPhone: phone,
+      });
+    }
+
+    // ---------------- Owner update logic ----------------
+    let updatedOwner = null;
+    for (let key of Object.keys(hotelObj.toObject())) {
+      if (key.startsWith("owner") && hotelObj[key]?.phone === oldPhone) {
+        updatedOwner = hotelObj[key];
+        break;
+      }
+    }
+
+    console.log("update owner", updatedOwner);
+    if (!updatedOwner) {
+      return res.status(404).send({ mssg: "Owner with oldPhone not found" });
+    }
+
+    if (updateImg) {
+      if (updatedOwner.imagePublicId) {
+        await cloudinary.uploader.destroy(updatedOwner.imagePublicId);
+        console.log("Old image deleted:", updatedOwner.imagePublicId);
+      }
+
+      const result = await cloudinary.uploader.upload(updateImg.path, {
+        folder: "ownerImages",
+      });
+
+      if (!result || !result.secure_url) {
+        throw new Error("Cloudinary image upload failed");
+      }
+      updatedOwner.image = result.secure_url;
+      updatedOwner.imagePublicId = result.public_id;
+    }
+
+    updatedOwner.address = address;
+    updatedOwner.phone = phone;
+
+    await hotelObj.save();
+
+    res.status(200).send({
+      mssg: "Owner profile updated successfully",
+      updatedData: hotelObj,
+      oldPhone: oldPhone,
+      newPhone: phone,
+    });
+  } catch (e) {
+    console.error("Update error:", e);
+    res.status(500).send({
+      mssg: "Update profile failed",
+      error: e.message,
+    });
+  }
+};
+
+// exports.addStaffDetails = async (req, res) => {
+//   try{
+// const hotelId=req.body.hotelId
+// const name=req.body.staffName
+// const phone=req.body.staffPhone
+// const address=req.body.staffAddress
+// const post=req.body.staffPost
+// const image = req.file;
+// const hotelObj=await hotel.findOne({_id:hotelId})
+// console.log('hotel obj',hotelObj)
+// if (!hotelObj) {
+//   return res.status(404).send({ mssg: "Hotel not found" });
+// }
+// if(image){
+//   const result = await cloudinary.uploader.upload(image.path, {
+//     folder: "staffImages",
+//   });
+
+//   if (!result || !result.secure_url) {
+//     throw new Error("Cloudinary staff image upload failed");
+//   }
+// }
+// res.status(200).send({
+//   mssg: "Owner profile updated successfully",
+
+// });
+//   }
+//   catch (e) {
+//     console.error("Update error:", e);
+//     res.status(500).send({
+//       mssg: "Update profile failed",
+//       error: e.message,
+//     });
+//   }
+// }
+
+
+exports.addStaffDetails = async (req, res) => {
+  try {
+    const hotelId = req.body.hotelId;
+    const name = req.body.staffName;
+    const phone = req.body.staffPhone;
+    const address = req.body.staffAddress;
+    const post = req.body.staffPost;
+    const image = req.file;
+
+    // Find hotel
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    let imageUrl = null;
+    let imagePublicId = null;
+
+    if (image) {
+      const result = await cloudinary.uploader.upload(image.path, {
+        folder: "staffImages",
+      });
+
+      if (!result || !result.secure_url) {
+        throw new Error("Cloudinary staff image upload failed");
+      }
+
+      imageUrl = result.secure_url;
+      imagePublicId = result.public_id;
+    }
+
+    // Staff object create karo
+    const staffData = {
+      name,
+      phone,
+      address,
+      post,
+      image: imageUrl,
+      imagePublicId: imagePublicId,
+    };
+
+    // Agar staff map hai toh nikal lo
+    if (!hotelObj.staff) {
+      hotelObj.staff = new Map();
+    }
+
+    // Next staff key generate
+    const nextIndex = hotelObj.staff.size + 1;
+    const staffKey = `staff${nextIndex}`;
+
+    // Insert staff object
+    hotelObj.staff.set(staffKey, staffData);
+
+    // Save hotel
+    await hotelObj.save();
+
+    res.status(200).send({
+      mssg: "Staff added successfully",
+      staffKey,
+      staffData,
+    });
+  } catch (e) {
+    console.error("Add staff error:", e);
+    res.status(500).send({
+      mssg: "Add staff failed",
+      error: e.message,
+    });
   }
 };

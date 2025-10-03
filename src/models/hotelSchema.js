@@ -47,6 +47,7 @@ const hotelSchema = mongoose.Schema({
           type: String,
           required: true,
         },
+        imagePublicId: { type: String }
       },
       owner2: {
         name: {
@@ -64,6 +65,7 @@ const hotelSchema = mongoose.Schema({
         image: {
           type: String,
         },
+        imagePublicId: { type: String }
       },
       owner3: {
         name: {
@@ -81,6 +83,7 @@ const hotelSchema = mongoose.Schema({
         image: {
           type: String,
         },
+        imagePublicId: { type: String }
       },
       owner4: {
         name: {
@@ -98,6 +101,7 @@ const hotelSchema = mongoose.Schema({
         image: {
           type: String,
         },
+        imagePublicId: { type: String }
       },
       staff: {
         type: Map,
