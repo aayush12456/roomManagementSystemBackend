@@ -62,7 +62,18 @@ io.on('connection', (socket) => {
     socket.on('updateCustomerDetailsAdvance',(message)=>{
         io.emit('getCustomerDetailsAdvance',message)
     })
-
+    socket.on('addStaffOwnerObj',(message)=>{
+        io.emit('getStaffOwnerObj',message)
+    })
+    socket.on('deleteStaffOwnerObj',(message)=>{
+        io.emit('getStaffOwnerObj',message)
+    })
+    socket.on('updateStaffOwnerObj',(message)=>{
+        io.emit('getStaffOwnerObj',message)
+    })
+    socket.on('addOwnerObj',(message)=>{
+        io.emit('getStaffOwnerObj',message)
+    })
 });
 
 module.exports = { io };

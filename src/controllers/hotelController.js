@@ -14,8 +14,13 @@ cloudinary.config({
   exports.hotelRegister = async (req, res) => {
     console.log('register data is',req.body)
     let cloudImageUrls = []
+    let ownerImagePublicIds = [];
+
     let hotelImageUrls=[]
+    let hotelImagePublicIds = [];
+
     let staffImageUrls=[]
+    let staffImagePublicIds = [];
     try{
       if (req.files && req.files.ownerImages) {
         for (const file of req.files.ownerImages) {
@@ -28,6 +33,7 @@ cloudinary.config({
           }
   
           cloudImageUrls.push(result.secure_url);
+          ownerImagePublicIds.push(result.public_id);
         }
       }
       if (req.files && req.files.hotelImages) {
@@ -41,6 +47,7 @@ cloudinary.config({
           }
   
           hotelImageUrls.push(result.secure_url);
+          hotelImagePublicIds.push(result.public_id);
         }
       }
 
@@ -55,23 +62,28 @@ cloudinary.config({
           }
   
           staffImageUrls.push(result.secure_url);
+          staffImagePublicIds.push(result.public_id);
         }
       }
       if (req.body.owner1) {
         req.body.owner1 = typeof req.body.owner1 === 'string' ? JSON.parse(req.body.owner1) : req.body.owner1;
         req.body.owner1.image = cloudImageUrls[0] || null;
+        req.body.owner1.imagePublicId=ownerImagePublicIds[0] || null
       }
       if (req.body.owner2) {
         req.body.owner2 = typeof req.body.owner2 === 'string' ? JSON.parse(req.body.owner2) : req.body.owner2;
         req.body.owner2.image = cloudImageUrls[1] || null;
+        req.body.owner2.imagePublicId=ownerImagePublicIds[1] || null
       }
       if (req.body.owner3) {
         req.body.owner3 = typeof req.body.owner3 === 'string' ? JSON.parse(req.body.owner3) : req.body.owner3;
         req.body.owner3.image = cloudImageUrls[2] || null;
+        req.body.owner3.imagePublicId=ownerImagePublicIds[2] || null
       }
       if (req.body.owner4) {
         req.body.owner4 = typeof req.body.owner4 === 'string' ? JSON.parse(req.body.owner4) : req.body.owner4;
         req.body.owner4.image = cloudImageUrls[3] || null;
+        req.body.owner4.imagePublicId=ownerImagePublicIds[3] || null
       }
 
       const staffMap = new Map();
@@ -83,8 +95,10 @@ cloudinary.config({
   
           if (!isNaN(staffIndex)) {
             staffData.image = staffImageUrls[staffIndex] || null;
+            staffData.imagePublicId=staffImagePublicIds[staffIndex] || null
           } else {
             staffData.image = null;
+            staffData.imagePublicId=null
           }
   
           staffMap.set(key, staffData);
@@ -137,9 +151,13 @@ if (req.body.roomData) {
       owner4:req.body.owner4,
       checkOutTime:req.body.checkOutTime,
       hotelImg1: hotelImageUrls[0] || null,
+      hotelImg1PublicId: hotelImagePublicIds[0] || null,
       hotelImg2: hotelImageUrls[1] || null,
+      hotelImg2PublicId: hotelImagePublicIds[1] || null,
       hotelImg3: hotelImageUrls[2] || null,
+      hotelImg3PublicId: hotelImagePublicIds[2] || null,
       hotelImg4: hotelImageUrls[3] || null,
+      hotelImg4PublicId: hotelImagePublicIds[4] || null,
       staff: staffObject,
       totalRoom:req.body.totalRoom,
       totalFloor:req.body.totalFloor,
@@ -1137,19 +1155,14 @@ exports.updateMyProfile = async (req, res) => {
 
 exports.addStaffDetails = async (req, res) => {
   try {
-    const hotelId = req.body.hotelId;
-    const name = req.body.staffName;
-    const phone = req.body.staffPhone;
-    const address = req.body.staffAddress;
-    const post = req.body.staffPost;
+    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, staffPost: post } = req.body;
     const image = req.file;
 
     // Find hotel
-    const hotelObj = await hotel.findOne({ _id: hotelId });
-    if (!hotelObj) {
-      return res.status(404).send({ mssg: "Hotel not found" });
-    }
-
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
+    console.log('hotel obj in staff',hotelObj)
+    // Upload image to Cloudinary (if exists)
     let imageUrl = null;
     let imagePublicId = null;
 
@@ -1166,35 +1179,43 @@ exports.addStaffDetails = async (req, res) => {
       imagePublicId = result.public_id;
     }
 
-    // Staff object create karo
+    // Staff object
     const staffData = {
       name,
       phone,
       address,
       post,
       image: imageUrl,
-      imagePublicId: imagePublicId,
+      imagePublicId,
     };
 
-    // Agar staff map hai toh nikal lo
+    // Initialize staff Map if not present
     if (!hotelObj.staff) {
       hotelObj.staff = new Map();
     }
-
-    // Next staff key generate
-    const nextIndex = hotelObj.staff.size + 1;
+    let nextIndex = 1;
+    while (hotelObj.staff.has(`staff${nextIndex}`)) {
+      nextIndex++;
+    }
     const staffKey = `staff${nextIndex}`;
 
-    // Insert staff object
+    // Add staff
     hotelObj.staff.set(staffKey, staffData);
 
-    // Save hotel
-    await hotelObj.save();
+    // Force Mongoose to track Map change
+    hotelObj.markModified("staff");
 
+    // Save
+    await hotelObj.save();
+console.log('hotel obj in final',hotelObj)
     res.status(200).send({
       mssg: "Staff added successfully",
-      staffKey,
-      staffData,
+      hotelObj,
+      staff: hotelObj.staff,
+      owner1: hotelObj.owner1,
+      owner2: hotelObj.owner2,
+      owner3: hotelObj.owner3,
+      owner4: hotelObj.owner4,
     });
   } catch (e) {
     console.error("Add staff error:", e);
@@ -1202,5 +1223,337 @@ exports.addStaffDetails = async (req, res) => {
       mssg: "Add staff failed",
       error: e.message,
     });
+  }
+};
+
+exports.getStaffPlusOwner=async(req,res)=>{
+  try{
+    const hotelId=req.params.id
+    const hotelObj=await hotel.findOne({_id:hotelId})
+    const staffObj=hotelObj.staff
+    const owner1=hotelObj.owner1
+    const owner2=hotelObj.owner2
+    const owner3=hotelObj.owner3
+    const owner4=hotelObj.owner4
+    res.status(200).send({
+      mssg: "staff details",
+     hotelObj:hotelObj,
+     staff:staffObj,
+     owner1:owner1,
+     owner2:owner2,
+     owner3:owner3,
+     owner4:owner4
+    });
+  }
+  catch(e){
+    console.error(e);
+    res.status(401).send({ mssg: 'get staff plus owner details failed' });
+  }
+}
+
+exports.deleteStaffOwner = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    console.log('hotelid',hotelId)
+    const staffId = req.body.staffId;
+
+    // Find hotel
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
+    console.log('obj hotel',hotelObj)
+
+    // Convert Map to object
+    const staffObj = Object.fromEntries(hotelObj.staff);
+
+    // Find key where staffId matches
+    const staffKey = Object.keys(staffObj).find(
+      (key) => staffObj[key]._id.toString() === staffId
+    );
+
+    if (!staffKey) {
+      return res.status(404).send({ mssg: "Staff not found" });
+    }
+
+    const imagePublicId = staffObj[staffKey].imagePublicId;
+    if (imagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(imagePublicId);
+      } catch (err) {
+        console.warn("⚠️ Cloudinary delete failed:", err.message);
+      }
+    }
+    // Delete staff
+    delete staffObj[staffKey];
+
+    // Update back to Map and save
+    hotelObj.staff = new Map(Object.entries(staffObj));
+    await hotelObj.save();
+
+    const io = req.app.locals.io; // ✅ Access socket instance
+    io.emit("getStaffOwnerObj", {
+      mssg: "staff details",
+      hotelObj,
+      staff: hotelObj.staff,
+      owner1: hotelObj.owner1,
+      owner2: hotelObj.owner2,
+      owner3: hotelObj.owner3,
+      owner4: hotelObj.owner4,
+    });
+
+
+    const owner1=hotelObj.owner1
+    const owner2=hotelObj.owner2
+    const owner3=hotelObj.owner3
+    const owner4=hotelObj.owner4
+    const staffObjs=hotelObj.staff
+
+    res.status(200).send({ 
+    mssg: "staff details",
+    hotelObj:hotelObj,
+     staff:staffObjs,
+     owner1:owner1,
+     owner2:owner2,
+     owner3:owner3,
+     owner4:owner4
+  
+  });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "Delete failed", error: e.message });
+  }
+};
+
+exports.updateStaffProfile = async (req, res) => {
+  try{
+    const hotelId = req.body.hotelId;
+    const name = req.body.staffName;
+    const phone = req.body.staffPhone;
+    const address = req.body.staffAddress;
+    const post = req.body.staffPost;
+    const staffId = req.body.staffId;
+    const image = req.file;
+
+    // Find hotel
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    if (staffId) {
+      // staff Map ke andar iterate
+      let matchedStaff = null;
+      for (let [key, staff] of hotelObj.staff.entries()) {
+        if (staff._id.toString() === staffId.toString()) {
+          matchedStaff = staff;
+          break;
+        }
+      }
+
+      if (!matchedStaff) {
+        return res.status(404).send({ mssg: "Staff with staffId not found" });
+      }
+
+      console.log("Matched Staff:", matchedStaff);
+
+      // Agar update karna ho staff details bhi update kar do
+      if (image) {
+        if (matchedStaff.imagePublicId) {
+          await cloudinary.uploader.destroy(matchedStaff.imagePublicId);
+          console.log("Old staff image deleted:", matchedStaff.imagePublicId);
+        }
+
+        const result = await cloudinary.uploader.upload(image.path, {
+          folder: "staffImages",
+        });
+
+        if (!result || !result.secure_url) {
+          throw new Error("Cloudinary staff image upload failed");
+        }
+
+        matchedStaff.image = result.secure_url;
+        matchedStaff.imagePublicId = result.public_id;
+      }
+
+      matchedStaff.address = address || matchedStaff.address;
+      matchedStaff.phone = phone || matchedStaff.phone;
+      matchedStaff.name = name || matchedStaff.name;
+      matchedStaff.post = post || matchedStaff.post;
+
+      await hotelObj.save();
+
+      const owner1=hotelObj.owner1
+      const owner2=hotelObj.owner2
+      const owner3=hotelObj.owner3
+      const owner4=hotelObj.owner4
+      const staffObjs=hotelObj.staff
+  
+
+      return res.status(200).send({
+        mssg: "staff details",
+        hotelObj:hotelObj,
+         staff:staffObjs,
+         owner1:owner1,
+         owner2:owner2,
+         owner3:owner3,
+         owner4:owner4
+      });
+    }
+  }
+  catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "update staff profile failed", error: e.message });
+  }
+}
+
+
+// exports.addOwner = async (req, res) => {
+//   try{
+// const hotelId=req.body.hotelId
+// console.log('id in',hotelId)
+// const name=req.body.ownerName
+// const address=req.body.ownerAddress
+// const phone=req.body.ownerPhone
+// const image = req.file;
+// let imageUrl = null;
+// let imagePublicId = null;
+
+// if (image) {
+//   const result = await cloudinary.uploader.upload(image.path, {
+//     folder: "ownerImages",
+//   });
+
+//   if (!result || !result.secure_url) {
+//     throw new Error("Cloudinary staff image upload failed");
+//   }
+
+//   imageUrl = result.secure_url;
+//   imagePublicId = result.public_id;
+// }
+
+// const hotelObj=await hotel.findOne({_id:hotelId})
+// console.log('hotel obj in owner',hotelObj)
+// if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
+// const owners = Object.keys(hotelObj.toObject()).filter(k => k.startsWith("owner"));
+//     if (owners.length >= 4) {
+//       return res.status(400).send({ mssg: "Maximum 4 owners allowed" });
+//     }
+
+//     // Add next owner (like owner3, owner4)
+//     const nextKey = `owner${owners.length + 1}`;
+//     // let nextKey = null;
+//     // for (let i = 1; i <= 4; i++) {
+//     //   if (!hotelObj[`owner${i}`]) {
+//     //     nextKey = `owner${i}`;
+//     //     break;
+//     //   }
+//     // }
+// if (!nextKey) {
+//   return res.status(400).send({ mssg: "Maximum 4 owners allowed" });
+// }
+//     hotelObj[nextKey] = {
+//       name:name,
+//       address:address,
+//       phone:phone,
+//       image: imageUrl,
+//       imagePublicId,
+//     };
+
+// await hotelObj.save();
+// console.log('hotel is',hotelObj)
+// const owner1=hotelObj.owner1
+// const owner2=hotelObj.owner2
+// const owner3=hotelObj.owner3
+// const owner4=hotelObj.owner4
+
+
+// const staffObjs=hotelObj.staff
+// res.status(200).send({ 
+//   mssg: "staff details",
+//   hotelObj:hotelObj,
+//   staff:staffObjs,
+//   owner1:owner1,
+//   owner2:owner2,
+//   owner3:owner3,
+//   owner4:owner4
+// });
+//   }
+//   catch (e) {
+//     console.error(e);
+//     res.status(500).send({ mssg: "Delete failed", error: e.message });
+//   }
+// }
+
+
+exports.addOwner = async (req, res) => {
+  try {
+    const hotelId = req.body.hotelId;
+    const name = req.body.ownerName;
+    const address = req.body.ownerAddress;
+    const phone = req.body.ownerPhone;
+    const image = req.file;
+    let imageUrl = null;
+    let imagePublicId = null;
+
+    if (image) {
+      const result = await cloudinary.uploader.upload(image.path, {
+        folder: "ownerImages",
+      });
+
+      if (!result || !result.secure_url) {
+        throw new Error("Cloudinary owner image upload failed");
+      }
+
+      imageUrl = result.secure_url;
+      imagePublicId = result.public_id;
+    }
+
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+    if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
+
+    // Find next available owner slot
+    let nextKey = null;
+    for (let i = 1; i <= 4; i++) {
+      const ownerData = hotelObj[`owner${i}`];
+      if (
+        !ownerData ||
+        Object.keys(ownerData).length === 0 ||
+        !ownerData.name
+      ) {
+        nextKey = `owner${i}`;
+        break;
+      }
+    }
+
+    if (!nextKey) {
+      return res.status(200).send({
+        mssg: "Maximum 4 owners already added — cannot add more",
+        hotelObj,
+      });
+    }
+
+    hotelObj[nextKey] = {
+      name,
+      address,
+      phone,
+      image: imageUrl,
+      imagePublicId,
+    };
+
+    await hotelObj.save();
+
+    const { owner1, owner2, owner3, owner4, staff: staffObjs } = hotelObj;
+
+    res.status(200).send({
+      mssg: "staff details",
+      hotelObj,
+      staff: staffObjs,
+      owner1,
+      owner2,
+      owner3,
+      owner4,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "Add Owner failed", error: e.message });
   }
 };

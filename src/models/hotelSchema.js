@@ -137,6 +137,11 @@ const hotelSchema = mongoose.Schema({
       hotelImg4:{
         type:String
       },
+      hotelImg1PublicId: { type: String },
+      hotelImg2PublicId: { type: String },
+      hotelImg3PublicId: { type: String },
+      hotelImg4PublicId: { type: String },
+
       roomArray: [
         {
           roomId: String,
@@ -215,9 +220,10 @@ const hotelSchema = mongoose.Schema({
           selectedDate:String
 
         }
-        
       ],
-})
+},
+{ strict: false }
+)
 hotelSchema.methods.generateAuthToken = async function () {
   try {
     console.log('toke data',this._id);
