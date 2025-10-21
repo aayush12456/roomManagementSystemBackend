@@ -19,6 +19,8 @@ const upload = multer({
   router.post('/getHotelName',hotelController.getHotelName)
   router.post('/loginWithOtp',hotelController.getOtp)
   router.post('/compareOtp',hotelController.compareOtp)
+  router.post('/switchProfile',hotelController.switchProfile)
+  router.post('/deleteSwitchProfile',hotelController.deleteSwitchProfile)
   router.get('/getRoomDetails/:id',hotelController.getRoomDetails)
   router.post('/addCustomerDetails/:id',hotelController.addCustomerDetails)
   router.get('/getCustomerDetails/:id',hotelController.getCustomerDetails)

@@ -326,42 +326,66 @@ res.status(201).send({
 //   res.status(401).send({ mssg: 'comparison failed' });
 // }
 // }  
+
+
+
 exports.compareOtp = async (req, res) => {
   try {
     const phone = String(req.body.phone || '').trim();
-    const hotelName = String(req.body.hotelName || '').trim().toLowerCase();
     const hotelId = req.body.hotelId;
+    const anotherPhone = String(req.body.anotherPhone || '').trim();
+    const anotherHotelId = req.body.anotherHotelId || '';
 
-    // Single hotel find karo
+    // ---------- Step 1: Find main hotel ----------
     const matchHotel = await hotel.findById(hotelId);
     if (!matchHotel) {
-      return res.status(404).send({ mssg: "Hotel not found" });
+      return res.status(404).send({ mssg: "Main hotel not found" });
     }
 
-    let isMatched = false;
+    const owners = ['owner1', 'owner2', 'owner3', 'owner4'];
 
-    // Owners check karo
-    if (matchHotel.owner1?.phone?.trim() === phone) isMatched = true;
-    if (matchHotel.owner2?.phone?.trim() === phone) isMatched = true;
-    if (matchHotel.owner3?.phone?.trim() === phone) isMatched = true;
-    if (matchHotel.owner4?.phone?.trim() === phone) isMatched = true;
+    // ============ CASE 1: anotherHotelId & anotherPhone NOT provided ============
+    if (!anotherHotelId || !anotherPhone) {
+      console.log("Running single-hotel comparison logic...");
 
-    // Staff check karo (staff1, staff2, ... unlimited)
-    if (matchHotel.staff) {
-      for (const staffMember of Object.values(matchHotel.staff)) {
-        if (String(staffMember?.phone || '').trim() === phone) {
-          isMatched = true;
+      // --- Check phone among all owners ---
+      let matchedProfile = null;
+      for (const ownerKey of owners) {
+        const owner = matchHotel[ownerKey];
+        if (owner && String(owner.phone || '').trim() === phone) {
+          matchedProfile = {
+            name: owner.name || '',
+            phone: owner.phone || '',
+            image: owner.image || '',
+            imagePublicId: owner.imagePublicId || '',
+            hotelName: matchHotel.hotelName || '',
+            hotelId: matchHotel._id || '',
+          };
           break;
         }
       }
-    }
 
-    // Hotel name bhi match karna hai
-    const isHotelNameMatch =
-      (matchHotel.hotelName || '').trim().toLowerCase() === hotelName;
-console.log('is hotel match',isHotelNameMatch)
-    if (isMatched || isHotelNameMatch) {
-      // Yahi hotel match hai
+      // --- If not found among owners, check staff ---
+      if (!matchedProfile && matchHotel.staff && matchHotel.staff.size > 0) {
+        for (const [key, staffMember] of matchHotel.staff.entries()) {
+          if (String(staffMember?.phone || '').trim() === phone) {
+            matchedProfile = {
+              name: staffMember.name || '',
+              phone: staffMember.phone || '',
+              image: staffMember.image || '',
+              imagePublicId: staffMember.imagePublicId || '',
+              hotelName: matchHotel.hotelName || '',
+              hotelId: matchHotel._id || '',
+            };
+            break;
+          }
+        }
+      }
+
+      if (!matchedProfile) {
+        return res.status(404).send({ mssg: "No profile found for this phone" });
+      }
+
       const token = await matchHotel.generateAuthToken();
       return res.status(200).send({
         mssg: "fetch data",
@@ -369,19 +393,189 @@ console.log('is hotel match',isHotelNameMatch)
         token: token,
         phone: phone,
       });
-    } else {
-      return res.status(401).send({
-        mssg: "No match found for given phone and hotelName",
+    }
+
+    // --- Prevent same hotel linking ---
+    if (String(hotelId) === String(anotherHotelId)) {
+      return res.status(400).send({
+        mssg: "Login with existing account of same hotel name not possible",
       });
     }
+
+    // ============ CASE 2: anotherHotelId & anotherPhone PROVIDED ============
+    const anotherHotel = await hotel.findById(anotherHotelId);
+    if (!anotherHotel) {
+      return res.status(404).send({ mssg: "Another hotel not found" });
+    }
+
+    // ---------- Step 2: Find match in anotherHotel ----------
+    let matchedProfileFromAnother = null;
+
+    // --- Owners check ---
+    for (const ownerKey of owners) {
+      const owner = anotherHotel[ownerKey];
+      if (owner && String(owner.phone || '').trim() === anotherPhone) {
+        matchedProfileFromAnother = {
+          name: owner.name || '',
+          phone: owner.phone || '',
+          image: owner.image || '',
+          imagePublicId: owner.imagePublicId || '',
+          hotelName: anotherHotel.hotelName || '',
+          hotelId: anotherHotel._id || '',
+        };
+        break;
+      }
+    }
+
+    // --- Staff check ---
+    if (!matchedProfileFromAnother && anotherHotel.staff && anotherHotel.staff.size > 0) {
+      for (const [key, staffMember] of anotherHotel.staff.entries()) {
+        if (String(staffMember?.phone || '').trim() === anotherPhone) {
+          matchedProfileFromAnother = {
+            name: staffMember.name || '',
+            phone: staffMember.phone || '',
+            image: staffMember.image || '',
+            imagePublicId: staffMember.imagePublicId || '',
+            hotelName: anotherHotel.hotelName || '',
+            hotelId: anotherHotel._id || '',
+          };
+          break;
+        }
+      }
+    }
+
+    // ---------- Step 3: Find match in matchHotel using phone ----------
+    let matchedProfileFromMain = null;
+
+    // --- Owners check ---
+    for (const ownerKey of owners) {
+      const owner = matchHotel[ownerKey];
+      if (owner && String(owner.phone || '').trim() === phone) {
+        matchedProfileFromMain = {
+          name: owner.name || '',
+          phone: owner.phone || '',
+          image: owner.image || '',
+          imagePublicId: owner.imagePublicId || '',
+          hotelName: matchHotel.hotelName || '',
+          hotelId: matchHotel._id || '',
+        };
+        break;
+      }
+    }
+
+    // --- Staff check ---
+    if (!matchedProfileFromMain && matchHotel.staff && matchHotel.staff.size > 0) {
+      for (const [key, staffMember] of matchHotel.staff.entries()) {
+        if (String(staffMember?.phone || '').trim() === phone) {
+          matchedProfileFromMain = {
+            name: staffMember.name || '',
+            phone: staffMember.phone || '',
+            image: staffMember.image || '',
+            imagePublicId: staffMember.imagePublicId || '',
+            hotelName: matchHotel.hotelName || '',
+            hotelId: matchHotel._id || '',
+          };
+          break;
+        }
+      }
+    }
+
+    // ---------- Step 4: Cross-link profiles and save ----------
+    if (matchedProfileFromAnother) {
+      const profileForMain = {
+        ...matchedProfileFromAnother,
+        loginNumber: phone, // ✅ store main login phone in opposite profile
+      };
+
+      const existingProfiles = Array.isArray(matchHotel.profileArray)
+        ? matchHotel.profileArray
+        : [];
+
+      const alreadyExists = existingProfiles.some(
+        (p) => p.phone === profileForMain.phone && p.hotelId === profileForMain.hotelId
+      );
+      if (!alreadyExists) {
+        matchHotel.profileArray.push(profileForMain);
+        await matchHotel.save();
+      }
+    }
+
+    if (matchedProfileFromMain) {
+      const profileForAnother = {
+        ...matchedProfileFromMain,
+        loginNumber: anotherPhone, // ✅ store opposite phone
+      };
+
+      const existingProfiles = Array.isArray(anotherHotel.profileArray)
+        ? anotherHotel.profileArray
+        : [];
+
+      const alreadyExists = existingProfiles.some(
+        (p) => p.phone === profileForAnother.phone && p.hotelId === profileForAnother.hotelId
+      );
+      if (!alreadyExists) {
+        anotherHotel.profileArray.push(profileForAnother); // ✅ Fixed: correct hotel updated
+        await anotherHotel.save();                         // ✅ Fixed: correct save target
+      }
+    }
+
+    // ---------- Step 5: Return final response ----------
+    const token = await matchHotel.generateAuthToken();
+    return res.status(200).send({
+      mssg: "fetch data",
+      matchedHotels: [matchHotel],
+      token: token,
+      phone: phone,
+    });
+
   } catch (e) {
     console.error("CompareOtp error:", e);
     res.status(500).send({
-      mssg: "comparison failed",
+      mssg: "Comparison failed",
       error: e.message,
     });
   }
 };
+
+exports.switchProfile=async(req,res)=>{
+try{
+const phone=req.body.phone
+const hotelId=req.body.hotelId
+const hotelName=req.body.hotelName
+const hotelObj=await hotel.findById(hotelId)
+const token = await hotelObj.generateAuthToken();
+res.status(200).send({mssg:'fetch data',matchedHotels:[hotelObj],token:token,phone:phone})
+
+}
+catch(e){
+  console.error("CompareOtp error:", e);
+    res.status(500).send({
+      mssg: "Comparison failed",
+      error: e.message,
+    });
+}
+}
+
+exports.deleteSwitchProfile=async(req,res)=>{
+  try{
+const hotelId=req.body.hotelId
+const phone =req.body.phone
+const anotherHotelId=req.body.anotherHotelId
+const anotherPhone=req.body.anotherPhone
+const hotelObj=await hotel.findById(hotelId)
+const anotherHotelObj=await hotel.findById(anotherHotelId)
+const profileArray=hotelObj.profileArray
+const anotherProfileArray=anotherHotelObj.profileArray
+res.status(200).send({mssg:'fetch data',hotelObj:hotelObj,anotherHotelObj:anotherHotelObj})
+  }
+  catch(e){
+    console.error("CompareOtp error:", e);
+      res.status(500).send({
+        mssg: "Comparison failed",
+        error: e.message,
+      });
+  }
+}
 
 exports.getRoomDetails=async(req,res)=>{
 try{

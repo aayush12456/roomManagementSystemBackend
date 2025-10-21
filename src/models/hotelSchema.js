@@ -221,6 +221,33 @@ const hotelSchema = mongoose.Schema({
 
         }
       ],
+      profileArray:[
+        {
+          name: {
+            type: String,
+            trim: true,
+          },
+          image:{
+            type:String
+          },
+          imagePublicId: { type: String },
+          hotelName:{
+            type: String,
+            trim: true,
+          },
+          hotelId: { type: String },
+          phone:{
+            type:String
+          },
+          loginNumber:{
+            type:String
+          },
+          anotherHotelId: { type: String },
+          anotherNumber:{
+            type:String
+          },
+        }
+      ]
 },
 { strict: false }
 )
