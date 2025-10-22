@@ -556,26 +556,63 @@ catch(e){
 }
 }
 
-exports.deleteSwitchProfile=async(req,res)=>{
-  try{
-const hotelId=req.body.hotelId
-const phone =req.body.phone
-const anotherHotelId=req.body.anotherHotelId
-const anotherPhone=req.body.anotherPhone
-const hotelObj=await hotel.findById(hotelId)
-const anotherHotelObj=await hotel.findById(anotherHotelId)
-const profileArray=hotelObj.profileArray
-const anotherProfileArray=anotherHotelObj.profileArray
-res.status(200).send({mssg:'fetch data',hotelObj:hotelObj,anotherHotelObj:anotherHotelObj})
+exports.deleteSwitchProfile = async (req, res) => {
+  try {
+    const hotelId = req.body.hotelId;
+    const phone = String(req.body.phone || '').trim();
+    const anotherHotelId = req.body.anotherHotelId;
+    console.log('another hotel id',anotherHotelId)
+    const anotherPhone = String(req.body.anotherPhone || '').trim();
+
+    // --- Validate ---
+    if (!hotelId || !anotherHotelId || !phone || !anotherPhone) {
+      return res.status(400).send({ mssg: "Missing required fields" });
+    }
+
+    const mainHotel = await hotel.findById(hotelId);
+    if (!mainHotel) {
+      return res.status(404).send({ mssg: "Main hotel not found" });
+    }
+
+    // ✅ Find the object that will be deleted
+    const deletedObj = mainHotel.profileArray.find(
+      (p) => p.loginNumber === phone && p.phone === anotherPhone
+    );
+
+    // console.log("Deleted object from main hotel:", deletedObj);
+
+
+    // ---------- Step 1: Delete from main hotel's profileArray ----------
+    const mainUpdate = await hotel.updateOne(
+      { _id: hotelId },
+      { $pull: { profileArray: { loginNumber: phone, phone: anotherPhone } } }
+    );
+    // ---------- Step 2: Delete from another hotel's profileArray ----------
+    const anotherUpdate = await hotel.updateOne(
+      { _id: anotherHotelId },
+      { $pull: { profileArray: { loginNumber: anotherPhone, phone: phone } } }
+    );
+
+    // ---------- Step 3: Fetch updated docs ----------
+    const updatedHotel = await hotel.findById(hotelId);
+    const updatedAnotherHotel = await hotel.findById(anotherHotelId);
+
+    // ---------- Step 4: Send response ----------
+    return res.status(200).send({
+      mssg: "Profile deleted successfully",
+      hotelArray: updatedHotel.profileArray,
+      deleteId:deletedObj._id
+      // anotherHotelObj: updatedAnotherHotel,
+    });
+
+  } catch (e) {
+    console.error("deleteSwitchProfile error:", e);
+    res.status(500).send({
+      mssg: "Deletion failed",
+      error: e.message,
+    });
   }
-  catch(e){
-    console.error("CompareOtp error:", e);
-      res.status(500).send({
-        mssg: "Comparison failed",
-        error: e.message,
-      });
-  }
-}
+};
 
 exports.getRoomDetails=async(req,res)=>{
 try{
