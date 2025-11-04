@@ -1788,3 +1788,114 @@ exports.addOwner = async (req, res) => {
     res.status(500).send({ mssg: "Add Owner failed", error: e.message });
   }
 };
+
+
+exports.addRoom = async (req, res) => {
+  try {
+    const hotelId = req.body.hotelId;
+    const { floor, roomType, bedType, roomNumber } = req.body;
+
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+    console.log('hotel is',hotelObj.totalRoom)
+    if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
+
+    const room = hotelObj.room;
+    const floorMap = room.get(floor);
+
+    if (!floorMap) {
+      return res.status(400).send({ mssg: "Invalid floor name" });
+    }
+
+    // ✅ Find how many rooms already exist in this floor
+    const existingRoomsCount = floorMap.size;
+
+    // ✅ Create new room key dynamically
+    const formattedFloorName =
+      floor
+        .replace(/floor/i, " Floor") // "groundfloor" → "ground Floor"
+        .replace(/^./, (c) => c.toUpperCase()); // Capitalize first letter → "Ground Floor"
+
+    const newRoomKey = `${formattedFloorName} Room ${existingRoomsCount + 1}`;
+
+    // ✅ Create new room object
+    const newRoom = {
+      roomType,
+      bedType,
+      number: roomNumber,
+      _id: new mongoose.Types.ObjectId(),
+    };
+
+    // ✅ Add into the Map
+    floorMap.set(newRoomKey, newRoom);
+
+    // ✅ Save updated data
+    hotelObj.room.set(floor, floorMap);
+    // const currentTotal = parseInt(hotelObj.totalRooms || "0", 10);
+    // hotelObj.totalRoom = String(currentTotal + 1);
+    if (hotelObj.totalRoom !== undefined) {
+      hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) + 1;
+    }
+    await hotelObj.save();
+
+    res.status(200).send({
+      mssg: "New room added successfully",
+      matchedHotels: hotelObj
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "Add room failed", error: e.message });
+  }
+};
+
+exports.deleteRoom = async (req, res) => {
+  try {
+    const hotelId = req.body.id;
+    const { floor, floorId } = req.body;
+
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    // ✅ Get the Map of rooms for that floor
+    const roomMap = hotelObj.room.get(floor);
+    if (!roomMap) {
+      return res.status(400).send({ mssg: "Invalid floor name" });
+    }
+
+    // ✅ Find the room key (like 'Ground Floor Room 3') by floorId
+    let targetKey = null;
+    for (const [key, roomObj] of roomMap.entries()) {
+      if (roomObj._id?.toString() === floorId) {
+        targetKey = key;
+        break;
+      }
+    }
+
+    if (!targetKey) {
+      return res.status(404).send({ mssg: "Room not found for this floor" });
+    }
+
+    // ✅ Delete from Map
+    roomMap.delete(targetKey);
+
+    // ✅ Update the nested map back
+    hotelObj.room.set(floor, roomMap);
+
+    if (hotelObj.totalRoom !== undefined) {
+      hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) -1;
+    }
+    // ✅ Save the changes permanently
+    await hotelObj.save();
+
+    return res.status(200).send({ 
+      mssg: "Room deleted successfully", 
+      matchedHotels: hotelObj
+    });
+
+  } catch (e) {
+    console.error("Error deleting room:", e);
+    res.status(500).send({ mssg: "Delete room failed", error: e.message });
+  }
+};
