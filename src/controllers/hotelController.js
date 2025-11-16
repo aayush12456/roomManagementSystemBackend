@@ -1891,7 +1891,9 @@ exports.deleteRoom = async (req, res) => {
 
     return res.status(200).send({ 
       mssg: "Room deleted successfully", 
-      matchedHotels: hotelObj
+      matchedHotels: hotelObj,
+      roomId:floorId,
+      roomName:floor
     });
 
   } catch (e) {
@@ -1899,3 +1901,128 @@ exports.deleteRoom = async (req, res) => {
     res.status(500).send({ mssg: "Delete room failed", error: e.message });
   }
 };
+
+exports.addFloor = async (req, res) => {
+  try {
+    console.log("body is", req.body);
+
+    const hotelId = req.body.id;
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    const room = hotelObj.room;
+    const bodyWithoutId = Object.keys(req.body).filter((key) => key !== "id");
+
+    if (bodyWithoutId.length === 0) {
+      return res.status(400).send({ mssg: "No floor data provided" });
+    }
+
+    // 🔹 Count total new rooms dynamically
+    let newRoomCount = 0;
+
+    // 🔹 Add floors and count rooms
+    bodyWithoutId.forEach((floorKey) => {
+      const floorData = req.body[floorKey];
+      const normalizedFloorName = floorKey.replace(/\s+/g, "").toLowerCase();
+
+      // Count rooms in this floor
+      const roomCount = Object.keys(floorData).length;
+      newRoomCount += roomCount;
+
+      // Add to the Map
+      room.set(normalizedFloorName, new Map(Object.entries(floorData)));
+    });
+
+    // 🔹 Increase totalRoom dynamically
+
+    hotelObj.totalRoom = ((parseInt(hotelObj.totalRoom) || 0) + newRoomCount).toString();
+    hotelObj.totalFloor = (
+      (parseInt(hotelObj.totalFloor) || 0) + bodyWithoutId.length
+    ).toString();
+
+
+    // 🔄 Save to DB
+    await hotelObj.save();
+
+    res.status(200).send({
+      mssg: "New Floor Added Successfully",
+      matchedHotels: hotelObj,
+    });
+  } catch (e) {
+    console.error("Error adding floor:", e);
+    res.status(500).send({ mssg: "Error adding floor", error: e.message });
+  }
+};
+
+
+exports.deleteFloor = async (req, res) => {
+  try {
+    const { id, floorName } = req.body;
+
+    const hotelObj = await hotel.findOne({ _id: id });
+
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    let room = hotelObj.room;
+
+    // Check if room is a Map or normal object
+    const isMap = room instanceof Map;
+
+    console.log("Before delete floors:", isMap ? Array.from(room.keys()) : Object.keys(room));
+
+    let floorExists = false;
+    let deletedRoomCount = 0;
+
+    if (isMap) {
+      // ✅ If room is a Map
+      if (room.has(floorName)) {
+        const floorData = room.get(floorName);
+        deletedRoomCount = floorData instanceof Map ? floorData.size : Object.keys(floorData).length;
+        room.delete(floorName);
+        floorExists = true;
+      }
+    } else {
+      // ✅ If room is a normal JS object
+      if (room[floorName]) {
+        const floorData = room[floorName];
+        deletedRoomCount = Object.keys(floorData).length;
+        delete room[floorName];
+        floorExists = true;
+      }
+    }
+
+    if (!floorExists) {
+      return res.status(404).send({ mssg: "Floor not found in this hotel" });
+    }
+    
+    const currentTotalFloor = parseInt(hotelObj.totalFloor) || 0;
+    const currentTotalRoom = parseInt(hotelObj.totalRoom) || 0;
+
+    hotelObj.totalFloor = Math.max(currentTotalFloor - 1, 0).toString();
+    hotelObj.totalRoom = Math.max(currentTotalRoom - deletedRoomCount, 0).toString();
+    // Assign back and save
+    hotelObj.room = room;
+
+    await hotelObj.save();
+
+    console.log(
+      "After delete floors:",
+      isMap ? Array.from(hotelObj.room.keys()) : Object.keys(hotelObj.room)
+    );
+
+    res.status(200).send({
+      mssg: "Floor deleted successfully",
+      matchedHotels: hotelObj,
+      floorName:floorName
+    });
+  } catch (e) {
+    console.error("Error delete floor:", e);
+    res.status(500).send({ mssg: "Error deleting floor", error: e.message });
+  }
+};
+

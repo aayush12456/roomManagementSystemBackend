@@ -40,4 +40,6 @@ const upload = multer({
   router.post('/addOwner',upload.single("ownerImg"),hotelController.addOwner)
   router.post('/addRoom',hotelController.addRoom)
   router.post('/deleteRoom',hotelController.deleteRoom)
+  router.post('/addFloor',hotelController.addFloor)
+  router.post('/deleteFloor',hotelController.deleteFloor)
   module.exports = router;
