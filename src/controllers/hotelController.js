@@ -2026,3 +2026,67 @@ exports.deleteFloor = async (req, res) => {
   }
 };
 
+exports.addMaintenanceCleanRoom = async (req, res) => {
+try{
+const hotelId=req.params.id
+const floorName=req.body.floorName
+const roomId=req.body.roomId
+const roomNo=req.body.roomNo
+const roomType=req.body.roomType
+const type=req.body.type
+const mainCleanerName=req.body.mainCleanerName
+const todayDate=req.body.todayDate
+const hotelObj = await hotel.findOne({ _id: hotelId });
+
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+ const maintainCleanRoomArray=hotelObj.maintainCleanRoom
+maintainCleanRoomArray.push({roomId:roomId,floorName:floorName,roomNo:roomNo,roomType:roomType,
+  type:type,mainCleanerName:mainCleanerName,todayDate:todayDate})
+
+const data=await hotelObj.save()
+console.log('data us',data)
+res.status(200).send({mssg:'maintainCleanRoom',maintainCleanRoom:data.maintainCleanRoom })
+}catch(e){
+  console.error("Error maintain cleaner room:", e);
+  res.status(500).send({ mssg: "Error deleting floor", error: e.message });
+}
+}
+
+exports.getMaintenanceCleanRoom=async(req,res)=>{
+  try{
+  const hotelId=req.params.id
+  const getMaintainCleanRoom=await hotel.findOne({_id:hotelId})
+  res.status(200).send({mssg:'maintainCleanRoom',maintainCleanRoom:getMaintainCleanRoom.maintainCleanRoom})
+  }catch(e){
+    console.error(e);
+    res.status(401).send({ mssg: 'get customer details failed' });
+  }
+  }
+
+  exports.deleteMaintenanceCleanRoom = async (req, res) => {
+    try {
+      const hotelId = req.params.id;
+      const roomId = req.body.roomId;
+  
+      const updatedHotel = await hotel.findByIdAndUpdate(
+        hotelId,
+        { $pull: {maintainCleanRoom: { _id: roomId } } }, // directly remove
+        { new: true }
+      );
+  
+      if (!updatedHotel) {
+        return res.status(404).send({ mssg: "Hotel not found" });
+      }
+  
+      res.status(200).send({
+        mssg: "maintainCleanRoom",
+        maintainCleanRoom: updatedHotel.maintainCleanRoom,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(401).send({ mssg: "Delete room details failed" });
+    }
+  };
+  

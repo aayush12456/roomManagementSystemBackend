@@ -247,7 +247,41 @@ const hotelSchema = mongoose.Schema({
             type:String
           },
         }
+      ],
+      maintainCleanRoom:[
+        // {
+        //   roomId: String,
+        //   roomType:String,
+        //   floor:String,
+        //   roomNo:String,
+        //   type:String,
+        //   mainCleanerName:String
+        // }
+        {
+          roomId:{
+            type: String
+          },
+          roomType:{
+            type: String
+          },
+          floor:{
+            type: String
+          },
+          roomNo:{
+            type: String
+          },
+          type:{
+            type: String
+          },
+          mainCleanerName:{
+            type: String
+          },
+          todayDate:{
+            type: String
+          },
+        }
       ]
+      
 },
 { strict: false }
 )

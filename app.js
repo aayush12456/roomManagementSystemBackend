@@ -74,6 +74,12 @@ io.on('connection', (socket) => {
     socket.on('addOwnerObj',(message)=>{
         io.emit('getStaffOwnerObj',message)
     })
+    socket.on('addMaintainCleanRoom',(message)=>{
+        io.emit('getMaintainCleanRoom',message)
+    })
+    socket.on('deleteMaintainCleanRoom',(message)=>{
+        io.emit('getMaintainCleanRoom',message)
+    })
 });
 
 module.exports = { io };
