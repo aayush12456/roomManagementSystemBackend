@@ -659,12 +659,14 @@ const frontDeskExecutiveName=req.body.frontDeskExecutiveName
 const customerSignature=req.body.customerSignature
 
 let signatureUrl = "";
+let imagePublicId = null;
     if (customerSignature) {
       const uploadResponse = await cloudinary.uploader.upload(customerSignature, {
         folder: "customer_signatures",
         resource_type: "image",
       });
       signatureUrl = uploadResponse.secure_url;
+      imagePublicId = uploadResponse.public_id;
     }
 
 console.log('customer signature',customerSignature)
@@ -676,7 +678,7 @@ hotelDetails.roomArray.push(
 totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof, customerAadharNumber:customerAadharNumber, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-customerSignature: signatureUrl
+customerSignature: signatureUrl,imagePublicId:imagePublicId
 })
 
 hotelDetails.reportArray.push(
@@ -684,7 +686,7 @@ hotelDetails.reportArray.push(
   totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerAadharNumber:customerAadharNumber,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
   checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-  customerSignature: signatureUrl
+  customerSignature: signatureUrl,imagePublicId:imagePublicId
   })
 const data=await hotelDetails.save()
 console.log('data us',data)
@@ -706,27 +708,73 @@ res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDe
 }
 }
 
+// exports.deleteCustomerDetails = async (req, res) => {
+//   try {
+//     const hotelId = req.params.id;
+//     const customerId = req.body.customerId;
+
+//     const updatedHotel = await hotel.findByIdAndUpdate(
+//       hotelId,
+//       { $pull: { roomArray: { _id: customerId } } }, // directly remove
+//       { new: true }
+//     );
+
+//     res.status(200).send({
+//       mssg: "Customer details deleted successfully",
+//       getCustomerDetailsArray: updatedHotel.roomArray,
+//     });
+//   } catch (e) {
+//     console.error(e);
+//     res.status(401).send({ mssg: "Delete customer details failed" });
+//   }
+// };
 exports.deleteCustomerDetails = async (req, res) => {
   try {
     const hotelId = req.params.id;
     const customerId = req.body.customerId;
 
+    // 1️⃣ Find hotel first
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    // 2️⃣ Find the specific customer inside roomArray
+    const customerData = hotelObj.roomArray.find(
+      (item) => item._id.toString() === customerId
+    );
+
+    if (!customerData) {
+      return res.status(404).send({ mssg: "Customer not found" });
+    }
+
+    // 3️⃣ Extract imagePublicId
+    const imagePublicId = customerData.imagePublicId;
+
+    // 4️⃣ Delete image from Cloudinary (if exists)
+    if (imagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(imagePublicId);
+      } catch (err) {
+        console.warn("⚠️ Cloudinary delete failed:", err.message);
+      }
+    }
+
+    // 5️⃣ Delete customer from DB using $pull
     const updatedHotel = await hotel.findByIdAndUpdate(
       hotelId,
-      { $pull: { roomArray: { _id: customerId } } }, // directly remove
+      { $pull: { roomArray: { _id: customerId } } },
       { new: true }
     );
 
-    if (!updatedHotel) {
-      return res.status(404).send({ mssg: "Hotel not found" });
-    }
-    res.status(200).send({
+    return res.status(200).send({
       mssg: "Customer details deleted successfully",
       getCustomerDetailsArray: updatedHotel.roomArray,
     });
+
   } catch (e) {
     console.error(e);
-    res.status(401).send({ mssg: "Delete customer details failed" });
+    return res.status(500).send({ mssg: "Delete customer details failed" });
   }
 };
 
@@ -2090,3 +2138,108 @@ exports.getMaintenanceCleanRoom=async(req,res)=>{
     }
   };
   
+
+  exports.deleteHotel = async (req, res) => {
+    try {
+      const hotelId = req.body.id;
+  
+      // 1️⃣ FIND HOTEL
+      const hotelObj = await hotel.findOne({ _id: hotelId });
+      if (!hotelObj) {
+        return res.status(404).send({ mssg: "Hotel not found" });
+      }
+
+      // 2️⃣ COLLECT ALL PUBLIC IDs TO DELETE FROM CLOUDINARY
+      let allPublicIds = [];
+  
+      // ---- OWNER IMAGES ----
+    
+     if (hotelObj.owner1.imagePublicId) allPublicIds.push(hotelObj.owner1.imagePublicId);
+     if (hotelObj.owner2.imagePublicId) allPublicIds.push(hotelObj.owner2.imagePublicId);
+     if (hotelObj.owner3.imagePublicId) allPublicIds.push(hotelObj.owner3.imagePublicId);
+     if (hotelObj.owner4.imagePublicId) allPublicIds.push(hotelObj.owner4.imagePublicId);
+  
+      // ---- STAFF IMAGES ----
+    // ---- STAFF IMAGES FROM MONGOOSE MAP ----
+if (hotelObj.staff instanceof Map) {
+  hotelObj.staff.forEach((staffMember, key) => {
+    if (staffMember?.imagePublicId) {
+      allPublicIds.push(staffMember.imagePublicId);
+    }
+  });
+}
+if (Array.isArray(hotelObj.roomArray)) {
+  hotelObj.roomArray.forEach((room) => {
+    if (room?.imagePublicId) {
+      allPublicIds.push(room.imagePublicId);
+    }
+  });
+}
+  
+      // ---- HOTEL IMAGES ----
+      if (hotelObj.hotelImg1PublicId) allPublicIds.push(hotelObj.hotelImg1PublicId);
+      if (hotelObj.hotelImg2PublicId) allPublicIds.push(hotelObj.hotelImg2PublicId);
+      if (hotelObj.hotelImg3PublicId) allPublicIds.push(hotelObj.hotelImg3PublicId);
+      if (hotelObj.hotelImg4PublicId) allPublicIds.push(hotelObj.hotelImg4PublicId);
+  
+      // ---- CUSTOMER SIGNATURES FROM roomArray ----
+      // hotelObj.roomArray?.forEach((room) => {
+      //   if (room.customerSignaturePublicId) {
+      //     allPublicIds.push(room.customerSignaturePublicId);
+      //   }
+      // });
+  
+      // // ---- CUSTOMER SIGNATURES FROM reportArray ----
+      // hotelObj.reportArray?.forEach((room) => {
+      //   if (room.customerSignaturePublicId) {
+      //     allPublicIds.push(room.customerSignaturePublicId);
+      //   }
+      // });
+  
+      // // ---- ADVANCE ROOM CUSTOMER SIGNATURES if any ----
+      // hotelObj.advanceRoomArray?.forEach((room) => {
+      //   if (room.customerSignaturePublicId) {
+      //     allPublicIds.push(room.customerSignaturePublicId);
+      //   }
+      // });
+  
+      // ---- PROFILE IMAGES ----
+      // hotelObj.profileArray?.forEach((item) => {
+      //   console.log('id is sd',item.publicId)
+      //   if (item.imagePublicId) {
+      //     allPublicIds.push(item.imagePublicId);
+      //   }
+      // });
+  
+  
+      // 3️⃣ REMOVE DUPLICATES (safety)
+      allPublicIds = [...new Set(allPublicIds)];
+      console.log('all public',allPublicIds)
+
+      const profileClean = await hotel.updateMany(
+        {},
+        {
+          $pull: {
+            profileArray: { hotelId: hotelId },
+          },
+        }
+      );
+      console.log("Profile removed from hotels:", profileClean.modifiedCount);
+      // 4️⃣ DELETE FROM CLOUDINARY
+      for (let id of allPublicIds) {
+        await cloudinary.uploader.destroy(id);
+      }
+  
+      // 5️⃣ DELETE HOTEL DOCUMENT FROM DB
+      await hotel.deleteOne({ _id: hotelId });
+  
+      res.status(200).send({
+        mssg: "Hotel deleted successfully",
+        deletedImages:hotelObj 
+      });
+  
+    } catch (e) {
+      console.log(e);
+      res.status(500).send({ mssg: "Delete hotel failed", error: e.message });
+    } 
+  };

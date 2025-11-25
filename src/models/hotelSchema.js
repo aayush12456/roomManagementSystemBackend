@@ -169,7 +169,8 @@ const hotelSchema = mongoose.Schema({
           paymentDue:String,
           frontDeskExecutiveName: String,
           customerSignature:String,
-          currentDate:String
+          currentDate:String,
+          imagePublicId:String 
         }
         
       ],
@@ -200,7 +201,8 @@ const hotelSchema = mongoose.Schema({
           paymentDue:String,
           frontDeskExecutiveName: String,
           customerSignature:String,
-          currentDate:String
+          currentDate:String,
+          imagePublicId:String 
         }
         
       ],
