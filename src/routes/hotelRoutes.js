@@ -11,7 +11,8 @@ const upload = multer({
   router.use(express.static('public'));
   router.post('/signup', 
   upload.fields([
-    { name: "hotelImages", maxCount: 4 },         // hotelImg1,2,3,4 as array of images     // video
+    // { name: "hotelImages", maxCount: 1 },         // hotelImg1,2,3,4 as array of images     // video
+    { name: "hotelImage", maxCount: 1 },
     { name: "staffImages", maxCount: 10 },   // staff images
     { name: "ownerImages", maxCount: 4 },    // owner1,2,3,4 image
   ])
@@ -46,4 +47,5 @@ const upload = multer({
   router.get('/getMaintenanceCleanRoom/:id',hotelController.getMaintenanceCleanRoom)
   router.post('/deleteMaintenanceCleanRoom/:id',hotelController.deleteMaintenanceCleanRoom)
   router.post('/deleteHotel',hotelController.deleteHotel)
+  router.post('/updateHotelImg',upload.single("updateHotelImg"),hotelController.updateHotelImage)
   module.exports = router;

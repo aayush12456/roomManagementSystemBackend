@@ -16,11 +16,14 @@ cloudinary.config({
     let cloudImageUrls = []
     let ownerImagePublicIds = [];
 
-    let hotelImageUrls=[]
-    let hotelImagePublicIds = [];
+    // let hotelImageUrls=[]
+    // let hotelImagePublicIds = [];
+    let hotelImageUrl = null;
+    let hotelImagePublicId = null;
 
     let staffImageUrls=[]
     let staffImagePublicIds = [];
+
     try{
       if (req.files && req.files.ownerImages) {
         for (const file of req.files.ownerImages) {
@@ -36,19 +39,33 @@ cloudinary.config({
           ownerImagePublicIds.push(result.public_id);
         }
       }
-      if (req.files && req.files.hotelImages) {
-        for (const file of req.files.hotelImages) {
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: 'hotelImages'
-          });
+      // if (req.files && req.files.hotelImages) {
+      //   for (const file of req.files.hotelImages) {
+      //     const result = await cloudinary.uploader.upload(file.path, {
+      //       folder: 'hotelImages'
+      //     });
   
-          if (!result || !result.secure_url) {
-            throw new Error('Cloudinary image upload failed');
-          }
+      //     if (!result || !result.secure_url) {
+      //       throw new Error('Cloudinary image upload failed');
+      //     }
   
-          hotelImageUrls.push(result.secure_url);
-          hotelImagePublicIds.push(result.public_id);
+      //     hotelImageUrls.push(result.secure_url);
+      //     hotelImagePublicIds.push(result.public_id);
+      //   }
+      // }
+      if (req.files && req.files.hotelImage && req.files.hotelImage.length > 0) {
+        const file = req.files.hotelImage[0];
+      
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "hotelImages"
+        });
+      
+        if (!result || !result.secure_url) {
+          throw new Error("Cloudinary image upload failed");
         }
+      
+        hotelImageUrl = result.secure_url;
+        hotelImagePublicId = result.public_id;
       }
 
       if (req.files && req.files.staffImages) {
@@ -150,14 +167,17 @@ if (req.body.roomData) {
       owner3:req.body.owner3,
       owner4:req.body.owner4,
       checkOutTime:req.body.checkOutTime,
-      hotelImg1: hotelImageUrls[0] || null,
-      hotelImg1PublicId: hotelImagePublicIds[0] || null,
-      hotelImg2: hotelImageUrls[1] || null,
-      hotelImg2PublicId: hotelImagePublicIds[1] || null,
-      hotelImg3: hotelImageUrls[2] || null,
-      hotelImg3PublicId: hotelImagePublicIds[2] || null,
-      hotelImg4: hotelImageUrls[3] || null,
-      hotelImg4PublicId: hotelImagePublicIds[4] || null,
+      // hotelImg1: hotelImageUrls[0] || null,
+      // hotelImg1PublicId: hotelImagePublicIds[0] || null,
+      // hotelImg2: hotelImageUrls[1] || null,
+      // hotelImg2PublicId: hotelImagePublicIds[1] || null,
+      // hotelImg3: hotelImageUrls[2] || null,
+      // hotelImg3PublicId: hotelImagePublicIds[2] || null,
+      // hotelImg4: hotelImageUrls[3] || null,
+      // hotelImg4PublicId: hotelImagePublicIds[4] || null,
+      hotelImg: hotelImageUrl,
+hotelImgPublicId: hotelImagePublicId,
+
       staff: staffObject,
       totalRoom:req.body.totalRoom,
       totalFloor:req.body.totalFloor,
@@ -2243,3 +2263,53 @@ if (Array.isArray(hotelObj.roomArray)) {
       res.status(500).send({ mssg: "Delete hotel failed", error: e.message });
     } 
   };
+
+
+  exports.updateHotelImage = async (req, res) => {
+    try {
+      const hotelId = req.body.id;
+      const updateHotelImg = req.file;
+  
+      const hotelObj = await hotel.findById(hotelId);
+      if (!hotelObj) {
+        return res.status(404).send({ mssg: "Hotel not found" });
+      }
+  
+      if (updateHotelImg) {
+  
+        // 1️⃣ delete old image
+        if (hotelObj.hotelImgPublicId) {
+          await cloudinary.uploader.destroy(hotelObj.hotelImgPublicId);
+        }
+  
+        // 2️⃣ upload new image
+        const result = await cloudinary.uploader.upload(updateHotelImg.path, {
+          folder: "hotelImages",
+        });
+  
+        // 3️⃣ update DB (guaranteed)
+        await hotel.updateOne(
+          { _id: hotelId },
+          {
+            hotelImg: result.secure_url,
+            hotelImgPublicId: result.public_id,
+          }
+        );
+      }
+  
+      const updated = await hotel.findById(hotelId);
+  
+      res.status(200).send({
+        mssg: "Hotel Image updated successfully",
+        updatedData: updated,
+      });
+  
+    } catch (e) {
+      res.status(500).send({
+        mssg: "Update profile failed",
+        error: e.message,
+      });
+    }
+  };
+  
+  
