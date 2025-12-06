@@ -277,6 +277,7 @@ exports.getHotelName = async (req, res) => {
         matchedHotelNames.push({
           hotelName: hotel.hotelName || null,
           hotelId: hotel._id.toString(),
+          hotelImg:hotel.hotelImg
         });
       }
     });
@@ -649,6 +650,7 @@ catch(e){
 }
 
 exports.addCustomerDetails=async(req,res)=>{
+  console.log('req in custm',req.body)
 try{
 const hotelId=req.params.id  
 const roomId=req.body.roomId
@@ -677,6 +679,8 @@ const paymentPaid=req.body.paymentPaid
 const paymentDue=req.body.paymentDue
 const frontDeskExecutiveName=req.body.frontDeskExecutiveName
 const customerSignature=req.body.customerSignature
+const extraCustomers = req.body.extraCustomers; // ✅ array aayega frontend se
+
 
 let signatureUrl = "";
 let imagePublicId = null;
@@ -698,7 +702,7 @@ hotelDetails.roomArray.push(
 totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof, customerAadharNumber:customerAadharNumber, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-customerSignature: signatureUrl,imagePublicId:imagePublicId
+customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
 })
 
 hotelDetails.reportArray.push(
@@ -706,7 +710,7 @@ hotelDetails.reportArray.push(
   totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerAadharNumber:customerAadharNumber,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
   checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-  customerSignature: signatureUrl,imagePublicId:imagePublicId
+  customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
   })
 const data=await hotelDetails.save()
 console.log('data us',data)
@@ -871,6 +875,7 @@ exports.deleteCustomerDetails = async (req, res) => {
 //   }
 // };
 exports.updateCustomerDetails = async (req, res) => {
+
   try {
     const hotelId = req.params.id;
     const roomId = req.body.roomId;
@@ -905,6 +910,7 @@ exports.updateCustomerDetails = async (req, res) => {
           paymentPaid: req.body.paymentPaid,
           paymentDue: req.body.paymentDue,
           frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+          extraCustomers:req.body.extraCustomers
         });
       }
     });
@@ -933,6 +939,7 @@ exports.updateCustomerDetails = async (req, res) => {
           paymentPaid: req.body.paymentPaid,
           paymentDue: req.body.paymentDue,
           frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+          extraCustomers:req.body.extraCustomers
         });
       }
     });

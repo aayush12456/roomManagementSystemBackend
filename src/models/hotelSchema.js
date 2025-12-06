@@ -170,7 +170,20 @@ const hotelSchema = mongoose.Schema({
           frontDeskExecutiveName: String,
           customerSignature:String,
           currentDate:String,
-          imagePublicId:String 
+          imagePublicId:String ,
+          extraCustomers: [
+            {
+              _id: {
+                type: mongoose.Schema.Types.ObjectId,
+                auto: true
+              },
+              customerName: String,
+              customerAddress: String,
+              customerPhoneNumber: String,
+              customerAadharNumber: String
+            }
+          ]
+          
         }
         
       ],
@@ -202,7 +215,21 @@ const hotelSchema = mongoose.Schema({
           frontDeskExecutiveName: String,
           customerSignature:String,
           currentDate:String,
-          imagePublicId:String 
+          imagePublicId:String ,
+          extraCustomers: [
+            {
+              _id: {
+                type: mongoose.Schema.Types.ObjectId,
+                auto: true
+              },
+              extraCustomerLabel: String, 
+              customerName: String,
+              customerAddress: String,
+              customerPhoneNumber: String,
+              customerAadharNumber: String
+            }
+          ]
+          
         }
         
       ],
@@ -219,7 +246,7 @@ const hotelSchema = mongoose.Schema({
           advancePayment:String,
           frontDeskExecutiveName: String,
           todayDate:String,
-          selectedDate:String
+          selectedDate:String,
 
         }
       ],
