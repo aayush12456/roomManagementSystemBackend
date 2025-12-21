@@ -1,9 +1,11 @@
 const hotel=require('../models/hotelSchema')
+const Notify = require("../models/notifySchema");
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken");
 const twilio=require('twilio')
 const cloudinary = require("cloudinary").v2;
 const dotenv=require('dotenv')
+const cron=require('cron')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env. TWILIO_AUTH_TOKEN);
 cloudinary.config({ 
@@ -1868,7 +1870,7 @@ exports.addOwner = async (req, res) => {
 exports.addRoom = async (req, res) => {
   try {
     const hotelId = req.body.hotelId;
-    const { floor, roomType, bedType, roomNumber } = req.body;
+    const { floor, roomType, bedType, roomNumber,name,imgUrl,message } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: hotelId });
     console.log('hotel is',hotelObj.totalRoom)
@@ -1910,11 +1912,24 @@ exports.addRoom = async (req, res) => {
     if (hotelObj.totalRoom !== undefined) {
       hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) + 1;
     }
+
+    // hotelObj.notifyMessage.push({name,imgUrl,message})
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name,
+      roomNo: roomNumber,
+      message,
+      imgUrl
+    });
+
+    // 2️⃣ Store reference in hotel (same feeling as before)
+    hotelObj.notifyMessage.push(notifyDoc._id);
     await hotelObj.save();
 
     res.status(200).send({
       mssg: "New room added successfully",
-      matchedHotels: hotelObj
+      matchedHotels: hotelObj,
+      notifyMessageArray:hotelObj.notifyMessage
     });
   } catch (e) {
     console.error(e);
@@ -1925,7 +1940,7 @@ exports.addRoom = async (req, res) => {
 exports.deleteRoom = async (req, res) => {
   try {
     const hotelId = req.body.id;
-    const { floor, floorId } = req.body;
+    const { floor, floorId,name,imgUrl,message,roomNumber } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: hotelId });
 
@@ -1962,13 +1977,25 @@ exports.deleteRoom = async (req, res) => {
       hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) -1;
     }
     // ✅ Save the changes permanently
+
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name,
+      roomNo:roomNumber,
+      message,
+      imgUrl
+    });
+
+    // 2️⃣ Store reference in hotel (same feeling as before)
+    hotelObj.notifyMessage.push(notifyDoc._id);
     await hotelObj.save();
 
     return res.status(200).send({ 
       mssg: "Room deleted successfully", 
       matchedHotels: hotelObj,
       roomId:floorId,
-      roomName:floor
+      roomName:floor,
+      notifyMessageArray:hotelObj.notifyMessage
     });
 
   } catch (e) {
@@ -1977,68 +2004,168 @@ exports.deleteRoom = async (req, res) => {
   }
 };
 
+// exports.addFloor = async (req, res) => {
+//   try {
+//     console.log("body is", req.body);
+
+//     const hotelId = req.body.id;
+//     // const name=req.body.name
+//     // const imgUrl=req.body.image
+//     // const message=req.body.message
+//     // const floorName=req.body.floorName
+//     const hotelObj = await hotel.findOne({ _id: hotelId });
+
+//     if (!hotelObj) {
+//       return res.status(404).send({ mssg: "Hotel not found" });
+//     }
+
+//     const room = hotelObj.room;
+//     const bodyWithoutId = Object.keys(req.body).filter((key) => key !== "id");
+
+//     if (bodyWithoutId.length === 0) {
+//       return res.status(400).send({ mssg: "No floor data provided" });
+//     }
+
+//     // 🔹 Count total new rooms dynamically
+//     let newRoomCount = 0;
+
+//     // 🔹 Add floors and count rooms
+//     bodyWithoutId.forEach((floorKey) => {
+//       const floorData = req.body[floorKey];
+//       const normalizedFloorName = floorKey.replace(/\s+/g, "").toLowerCase();
+
+//       // Count rooms in this floor
+//       const roomCount = Object.keys(floorData).length;
+//       newRoomCount += roomCount;
+
+//       // Add to the Map
+//       room.set(normalizedFloorName, new Map(Object.entries(floorData)));
+//     });
+
+//     // 🔹 Increase totalRoom dynamically
+
+//     hotelObj.totalRoom = ((parseInt(hotelObj.totalRoom) || 0) + newRoomCount).toString();
+//     hotelObj.totalFloor = (
+//       (parseInt(hotelObj.totalFloor) || 0) + bodyWithoutId.length
+//     ).toString();
+
+// //  const notifyDoc = await Notify.create({
+// //       hotelId,
+// //       name:name,
+// //       message:message,
+// //       imgUrl:imgUrl,
+// //       floorName:floorName
+// //     });
+
+// //     hotelObj.notifyMessage.push(notifyDoc._id);
+//     // 🔄 Save to DB
+//     await hotelObj.save();
+
+//     res.status(200).send({
+//       mssg: "New Floor Added Successfully",
+//       matchedHotels: hotelObj,
+//       // notifyMessageArray:hotelObj.notifyMessage
+//     });
+//   } catch (e) {
+//     console.error("Error adding floor:", e);
+//     res.status(500).send({ mssg: "Error adding floor", error: e.message });
+//   }
+// };
+
+
 exports.addFloor = async (req, res) => {
   try {
     console.log("body is", req.body);
 
-    const hotelId = req.body.id;
-    const hotelObj = await hotel.findOne({ _id: hotelId });
+    const {
+      id: hotelId,
+      name,
+       imgUrl,
+      message,
+      floorName, // optional (sirf notify ke liye)
+    } = req.body;
 
+    const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
 
     const room = hotelObj.room;
-    const bodyWithoutId = Object.keys(req.body).filter((key) => key !== "id");
 
-    if (bodyWithoutId.length === 0) {
-      return res.status(400).send({ mssg: "No floor data provided" });
-    }
+    // ❗ Ye keys floor nahi hain — inko ignore karna hai
+    const NON_FLOOR_KEYS = ["id", "name", "imgUrl", "message", "floorName"];
 
-    // 🔹 Count total new rooms dynamically
     let newRoomCount = 0;
+    let newFloorCount = 0;
 
-    // 🔹 Add floors and count rooms
-    bodyWithoutId.forEach((floorKey) => {
-      const floorData = req.body[floorKey];
-      const normalizedFloorName = floorKey.replace(/\s+/g, "").toLowerCase();
+    // 🔹 Sirf actual floor objects process karo
+    Object.keys(req.body).forEach((key) => {
+      if (NON_FLOOR_KEYS.includes(key)) return;
 
-      // Count rooms in this floor
+      const floorData = req.body[key];
+
+      // safety check
+      if (typeof floorData !== "object" || Array.isArray(floorData)) return;
+
+      const normalizedFloorName = key.replace(/\s+/g, "").toLowerCase();
+
+      // room count
       const roomCount = Object.keys(floorData).length;
       newRoomCount += roomCount;
+      newFloorCount += 1;
 
-      // Add to the Map
-      room.set(normalizedFloorName, new Map(Object.entries(floorData)));
+      // Map ke andar Map set karo (IMPORTANT)
+      room.set(
+        normalizedFloorName,
+        new Map(Object.entries(floorData))
+      );
     });
 
-    // 🔹 Increase totalRoom dynamically
-
-    hotelObj.totalRoom = ((parseInt(hotelObj.totalRoom) || 0) + newRoomCount).toString();
-    hotelObj.totalFloor = (
-      (parseInt(hotelObj.totalFloor) || 0) + bodyWithoutId.length
+    // 🔹 totalRoom & totalFloor update
+    hotelObj.totalRoom = (
+      (parseInt(hotelObj.totalRoom, 10) || 0) + newRoomCount
     ).toString();
 
+    hotelObj.totalFloor = (
+      (parseInt(hotelObj.totalFloor, 10) || 0) + newFloorCount
+    ).toString();
 
-    // 🔄 Save to DB
+    // 🔔 Notification create (TTL enabled – auto delete after 24h)
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name,
+      message,
+      imgUrl,
+     floorName
+    });
+
+    // 🔗 Hotel me sirf reference push karo
+    hotelObj.notifyMessage.push(notifyDoc._id);
+
+    // 💾 Save hotel
     await hotelObj.save();
 
     res.status(200).send({
       mssg: "New Floor Added Successfully",
       matchedHotels: hotelObj,
+      notifyMessageArray: hotelObj.notifyMessage,
     });
+
   } catch (e) {
     console.error("Error adding floor:", e);
-    res.status(500).send({ mssg: "Error adding floor", error: e.message });
+    res.status(500).send({
+      mssg: "Error adding floor",
+      error: e.message,
+    });
   }
 };
 
-
 exports.deleteFloor = async (req, res) => {
   try {
-    const { id, floorName } = req.body;
+    const { id, floorName , name,imgUrl, message} = req.body;
 
     const hotelObj = await hotel.findOne({ _id: id });
-
+   let hotelId=id
     if (!hotelObj) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
@@ -2082,6 +2209,17 @@ exports.deleteFloor = async (req, res) => {
     hotelObj.totalRoom = Math.max(currentTotalRoom - deletedRoomCount, 0).toString();
     // Assign back and save
     hotelObj.room = room;
+    
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name,
+      message,
+      imgUrl,
+     floorName
+    });
+
+    // 🔗 Hotel me sirf reference push karo
+    hotelObj.notifyMessage.push(notifyDoc._id);
 
     await hotelObj.save();
 
@@ -2093,7 +2231,9 @@ exports.deleteFloor = async (req, res) => {
     res.status(200).send({
       mssg: "Floor deleted successfully",
       matchedHotels: hotelObj,
-      floorName:floorName
+      floorName:floorName,
+      notifyMessageArray: hotelObj.notifyMessage,
+
     });
   } catch (e) {
     console.error("Error delete floor:", e);
@@ -2319,4 +2459,87 @@ if (Array.isArray(hotelObj.roomArray)) {
     }
   };
   
+  exports.addNotifcationToken = async (req, res) => {
+    try {
+      const hotelId = req.params.id;
+      const { notifyToken, phone } = req.body;
   
+      const hotelObj = await hotel.findById(hotelId);
+      if (!hotelObj) {
+        return res.status(404).json({ msg: "Hotel not found" });
+      }
+  
+      // ✅ prevent duplicate tokens
+      // const alreadyExists = hotelObj.notificationToken.some(
+      //   (item) => item.phone === phone
+      // );
+  
+      // if (!alreadyExists) {
+      //   hotelObj.notificationToken.push({
+      //     token: notifyToken,
+      //     phone,
+      //   });
+      // }
+      hotelObj.notificationToken.push({
+        token: notifyToken,
+        phone,
+      });
+      await hotelObj.save();
+    let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+      res.status(200).json({
+        msg: "Notification token ",
+        notifyTokenArray:finalNotifyArray,
+      });
+    } catch (e) {
+      res.status(500).json({
+        msg: "Failed to save notification token",
+        error: e.message,
+      });
+    }
+  };
+  
+  exports.getNotifcationToken=async(req,res)=>{
+    try{
+    const hotelId=req.params.id
+    const hotelObj=await hotel.findOne({_id:hotelId})
+    const token = req.query.token;
+    let notifyArray
+    notifyArray=hotelObj.notificationToken
+   notifyArray=notifyArray.filter((item)=>item.token!==token)
+    res.status(200).send({ msg: "Notification token ",
+    notifyTokenArray:notifyArray})
+    }catch(e){
+      console.error(e);
+      res.status(401).send({ mssg: 'get customer details failed' });
+    }
+    }
+
+
+    
+    exports.getMessageNotify = async (req, res) => {
+      try {
+        const hotelId = new mongoose.Types.ObjectId(req.params.id);
+    
+        const hotelObj = await hotel
+          .findById(hotelId)
+          .populate({
+            path: "notifyMessage",
+            options: { sort: { createdAt: -1 } } // latest first (optional)
+          })
+          .select("notifyMessage");
+    
+        if (!hotelObj) {
+          return res.status(404).send({ msg: "Hotel not found" });
+        }
+    
+        res.status(200).send({
+          msg: "Notification list",
+          notifyMessageArray: hotelObj.notifyMessage // ✅ ARRAY OF OBJECTS
+        });
+    
+      } catch (e) {
+        console.error(e);
+        res.status(500).send({ msg: "Get notification failed" });
+      }
+    };
+    

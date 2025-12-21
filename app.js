@@ -80,6 +80,9 @@ io.on('connection', (socket) => {
     socket.on('deleteMaintainCleanRoom',(message)=>{
         io.emit('getMaintainCleanRoom',message)
     })
+    socket.on('addNotifyToken',(message)=>{
+        io.emit('getNotifyToken',message)
+    })
 });
 
 module.exports = { io };

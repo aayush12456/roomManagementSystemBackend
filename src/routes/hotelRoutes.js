@@ -48,4 +48,7 @@ const upload = multer({
   router.post('/deleteMaintenanceCleanRoom/:id',hotelController.deleteMaintenanceCleanRoom)
   router.post('/deleteHotel',hotelController.deleteHotel)
   router.post('/updateHotelImg',upload.single("updateHotelImg"),hotelController.updateHotelImage)
+  router.post('/addNotificationToken/:id',hotelController.addNotifcationToken)
+  router.post('/getNotificationToken/:id',hotelController.getNotifcationToken)
+  router.get('/getMessageNotify/:id',hotelController.getMessageNotify)
   module.exports = router;

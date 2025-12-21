@@ -309,7 +309,25 @@ const hotelSchema = mongoose.Schema({
             type: String
           },
         }
+      ],
+      notificationToken:[
+        {
+          token:{
+            type: String
+          },
+          phone:{
+            type: String
+          }
+        }
+      ],
+      notifyMessage: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "notifyMessage"
+        }
       ]
+      
+      
       
 },
 { strict: false }
