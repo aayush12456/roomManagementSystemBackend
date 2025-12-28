@@ -31,6 +31,6 @@ type:String
 });
 
 // 🔥 TTL (auto delete after 2 min / 300 sec)
-notifySchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+notifySchema.index({ createdAt: 1 }, { expireAfterSeconds: 43200 });
 
 module.exports = mongoose.model("notifyMessage", notifySchema);

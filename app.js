@@ -1,5 +1,8 @@
 const express=require('express')
 const db = require('./src/db/db');
+const startNotifyCleanupJob = require("./src/services/notifyWatcher");
+startNotifyCleanupJob();
+
 const http =require('http')
 const cors = require("cors");
 const hotelRoutes = require('./src/routes/hotelRoutes');

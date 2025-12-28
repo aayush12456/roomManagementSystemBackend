@@ -1463,9 +1463,9 @@ exports.updateMyProfile = async (req, res) => {
 
 exports.addStaffDetails = async (req, res) => {
   try {
-    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, staffPost: post } = req.body;
+    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, 
+      staffPost: post,imgUrl:imgUrl,message:message} = req.body;
     const image = req.file;
-
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
@@ -1513,6 +1513,17 @@ exports.addStaffDetails = async (req, res) => {
     // Force Mongoose to track Map change
     hotelObj.markModified("staff");
 
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name:req.body.personName,
+      personName:name,
+      message,
+      imgUrl
+    });
+
+    // 2️⃣ Store reference in hotel (same feeling as before)
+    hotelObj.notifyMessage.push(notifyDoc._id);
+    const notifyMessageArray=await Notify.find()
     // Save
     await hotelObj.save();
 console.log('hotel obj in final',hotelObj)
@@ -1524,6 +1535,7 @@ console.log('hotel obj in final',hotelObj)
       owner2: hotelObj.owner2,
       owner3: hotelObj.owner3,
       owner4: hotelObj.owner4,
+      notifyMessageArray:notifyMessageArray
     });
   } catch (e) {
     console.error("Add staff error:", e);
@@ -1543,6 +1555,7 @@ exports.getStaffPlusOwner=async(req,res)=>{
     const owner2=hotelObj.owner2
     const owner3=hotelObj.owner3
     const owner4=hotelObj.owner4
+    const notifyMessageArray=await Notify.find()
     res.status(200).send({
       mssg: "staff details",
      hotelObj:hotelObj,
@@ -1550,7 +1563,8 @@ exports.getStaffPlusOwner=async(req,res)=>{
      owner1:owner1,
      owner2:owner2,
      owner3:owner3,
-     owner4:owner4
+     owner4:owner4,
+     notifyMessageArray:notifyMessageArray
     });
   }
   catch(e){
@@ -1564,7 +1578,10 @@ exports.deleteStaffOwner = async (req, res) => {
     const hotelId = req.params.id;
     console.log('hotelid',hotelId)
     const staffId = req.body.staffId;
-
+    const imgUrl=req.body.imgUrl
+    const message=req.body.message
+    
+    
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
@@ -1577,11 +1594,11 @@ exports.deleteStaffOwner = async (req, res) => {
     const staffKey = Object.keys(staffObj).find(
       (key) => staffObj[key]._id.toString() === staffId
     );
-
+    console.log('staff is ',staffKey)
     if (!staffKey) {
       return res.status(404).send({ mssg: "Staff not found" });
     }
-
+    const staffName=staffObj[staffKey].name
     const imagePublicId = staffObj[staffKey].imagePublicId;
     if (imagePublicId) {
       try {
@@ -1595,6 +1612,17 @@ exports.deleteStaffOwner = async (req, res) => {
 
     // Update back to Map and save
     hotelObj.staff = new Map(Object.entries(staffObj));
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name:req.body.personName,
+      personName:staffName,
+      message,
+      imgUrl
+    });
+
+    // 2️⃣ Store reference in hotel (same feeling as before)
+    hotelObj.notifyMessage.push(notifyDoc._id);
+    const notifyMessageArray=await Notify.find()
     await hotelObj.save();
 
     const io = req.app.locals.io; // ✅ Access socket instance
@@ -1622,7 +1650,8 @@ exports.deleteStaffOwner = async (req, res) => {
      owner1:owner1,
      owner2:owner2,
      owner3:owner3,
-     owner4:owner4
+     owner4:owner4,
+     notifyMessageArray:notifyMessageArray
   
   });
   } catch (e) {
@@ -1798,7 +1827,9 @@ exports.addOwner = async (req, res) => {
     const name = req.body.ownerName;
     const address = req.body.ownerAddress;
     const phone = req.body.ownerPhone;
-    const image = req.file;
+    const image = req.file
+    const imgUrl=req.body.imgUrl
+    const message=req.body.message
     let imageUrl = null;
     let imagePublicId = null;
 
@@ -1847,6 +1878,17 @@ exports.addOwner = async (req, res) => {
       imagePublicId,
     };
 
+    const notifyDoc = await Notify.create({
+      hotelId,
+      name:req.body.personName,
+      personName:name,
+      message,
+      imgUrl
+    });
+
+    // 2️⃣ Store reference in hotel (same feeling as before)
+    hotelObj.notifyMessage.push(notifyDoc._id);
+    const notifyMessageArray=await Notify.find()
     await hotelObj.save();
 
     const { owner1, owner2, owner3, owner4, staff: staffObjs } = hotelObj;
@@ -1859,6 +1901,7 @@ exports.addOwner = async (req, res) => {
       owner2,
       owner3,
       owner4,
+      notifyMessageArray:notifyMessageArray
     });
   } catch (e) {
     console.error(e);
@@ -2459,6 +2502,44 @@ if (Array.isArray(hotelObj.roomArray)) {
     }
   };
   
+  // exports.addNotifcationToken = async (req, res) => {
+  //   try {
+  //     const hotelId = req.params.id;
+  //     const { notifyToken, phone } = req.body;
+  
+  //     const hotelObj = await hotel.findById(hotelId);
+  //     if (!hotelObj) {
+  //       return res.status(404).json({ msg: "Hotel not found" });
+  //     }
+  
+  //     // ✅ prevent duplicate tokens
+  //     // const alreadyExists = hotelObj.notificationToken.some(
+  //     //   (item) => item.phone === phone
+  //     // );
+  
+  //     // if (!alreadyExists) {
+  //     //   hotelObj.notificationToken.push({
+  //     //     token: notifyToken,
+  //     //     phone,
+  //     //   });
+  //     // }
+  //     hotelObj.notificationToken.push({
+  //       token: notifyToken,
+  //       phone,
+  //     });
+  //     await hotelObj.save();
+  //   let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+  //     res.status(200).json({
+  //       msg: "Notification token ",
+  //       notifyTokenArray:finalNotifyArray,
+  //     });
+  //   } catch (e) {
+  //     res.status(500).json({
+  //       msg: "Failed to save notification token",
+  //       error: e.message,
+  //     });
+  //   }
+  // };
   exports.addNotifcationToken = async (req, res) => {
     try {
       const hotelId = req.params.id;
@@ -2469,27 +2550,28 @@ if (Array.isArray(hotelObj.roomArray)) {
         return res.status(404).json({ msg: "Hotel not found" });
       }
   
-      // ✅ prevent duplicate tokens
-      // const alreadyExists = hotelObj.notificationToken.some(
-      //   (item) => item.phone === phone
-      // );
+      // 🔍 check if token already exists
+      const alreadyExists = hotelObj.notificationToken.some(
+        (item) => item.token === notifyToken
+      );
   
-      // if (!alreadyExists) {
-      //   hotelObj.notificationToken.push({
-      //     token: notifyToken,
-      //     phone,
-      //   });
-      // }
-      hotelObj.notificationToken.push({
-        token: notifyToken,
-        phone,
-      });
-      await hotelObj.save();
-    let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+      // ⛔ don't push duplicate
+      if (!alreadyExists) {
+        hotelObj.notificationToken.push({
+          token: notifyToken,
+          phone,
+        });
+        await hotelObj.save();
+      }
+      let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+      // ⚠️ don't remove same token from response (your old filter did that)
       res.status(200).json({
-        msg: "Notification token ",
-        notifyTokenArray:finalNotifyArray,
+        msg: alreadyExists
+          ? "Token already exists — not added again"
+          : "Notification token saved",
+        notifyTokenArray: finalNotifyArray,
       });
+  
     } catch (e) {
       res.status(500).json({
         msg: "Failed to save notification token",
@@ -2498,6 +2580,8 @@ if (Array.isArray(hotelObj.roomArray)) {
     }
   };
   
+
+
   exports.getNotifcationToken=async(req,res)=>{
     try{
     const hotelId=req.params.id
