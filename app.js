@@ -21,6 +21,10 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/hotel', hotelRoutes);
+app.get('/ping', (req, res) => {
+    res.status(200).send('Server is alive');
+  });
+  
 const port = process.env.PORT || 4000;
 server.listen(port, '0.0.0.0', () => {
     console.log(`Server is running at http://192.168.29.169:${port}`);
