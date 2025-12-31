@@ -90,6 +90,9 @@ io.on('connection', (socket) => {
     socket.on('addNotifyToken',(message)=>{
         io.emit('getNotifyToken',message)
     })
+    socket.on('deleteNotificationToken',(message)=>{
+        io.emit('getNotifyToken',message)
+    })
 });
 
 module.exports = { io };

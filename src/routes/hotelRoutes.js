@@ -50,5 +50,6 @@ const upload = multer({
   router.post('/updateHotelImg',upload.single("updateHotelImg"),hotelController.updateHotelImage)
   router.post('/addNotificationToken/:id',hotelController.addNotifcationToken)
   router.post('/getNotificationToken/:id',hotelController.getNotifcationToken)
+  router.post('/deleteNotificationToken/:id',hotelController.deleteNotifcationToken)
   router.get('/getMessageNotify/:id',hotelController.getMessageNotify)
   module.exports = router;

@@ -2563,13 +2563,13 @@ if (Array.isArray(hotelObj.roomArray)) {
         });
         await hotelObj.save();
       }
-      let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+      // let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
       // ⚠️ don't remove same token from response (your old filter did that)
       res.status(200).json({
         msg: alreadyExists
           ? "Token already exists — not added again"
           : "Notification token saved",
-        notifyTokenArray: finalNotifyArray,
+        notifyTokenArray:hotelObj.notificationToken,
       });
   
     } catch (e) {
@@ -2590,7 +2590,7 @@ if (Array.isArray(hotelObj.roomArray)) {
     let notifyArray
     notifyArray=hotelObj.notificationToken
    notifyArray=notifyArray.filter((item)=>item.token!==token)
-    res.status(200).send({ msg: "Notification token ",
+    res.status(200).send({ msg: "Notification token",
     notifyTokenArray:notifyArray})
     }catch(e){
       console.error(e);
@@ -2627,3 +2627,65 @@ if (Array.isArray(hotelObj.roomArray)) {
       }
     };
     
+
+    exports.deleteNotifcationToken = async (req, res) => {
+      try {
+        const hotelId = req.params.id;
+        const notifyToken = req.body.notifyToken;
+       const deadToken=req.body.deadToken
+        // 1️⃣ Find hotel first
+        const hotelObj = await hotel.findById(hotelId);
+        if (!hotelObj) {
+          return res.status(404).send({ mssg: "Hotel not found" });
+        }
+    
+        if (Array.isArray(deadToken) && deadToken.length > 0) {
+
+          await hotel.updateOne(
+            { _id: hotelId },
+            {
+              $pull: {
+                notificationToken: {
+                  token: { $in: deadToken },
+                },
+              },
+            }
+          );
+    
+          // 🔥 AB FINAL LIST NIKAL KE YAHI RETURN KAR DO
+          const finalHotel = await hotel.findById(hotelId).select("notificationToken");
+    
+          return res.status(200).send({
+            mssg: "Dead tokens removed",
+            notifyTokenArray: finalHotel.notificationToken,
+          });
+        }
+
+        // 2️⃣ Find the specific customer inside roomArray
+        const tokenData = hotelObj.notificationToken.find(
+          (item) => item.token.toString() === notifyToken
+        );
+    
+        if (!tokenData) {
+          return res.status(404).send({ mssg: "token not found" });
+        }
+    
+       
+    
+        // 5️⃣ Delete token from DB using $pull
+        const updatedHotel = await hotel.findByIdAndUpdate(
+          hotelId,
+          { $pull: { notificationToken: { token: notifyToken } } },
+          { new: true }
+        );
+    
+        return res.status(200).send({
+          mssg: "Notification token",
+          notifyTokenArray: updatedHotel.notificationToken,
+        });
+    
+      } catch (e) {
+        console.error(e);
+        return res.status(500).send({ mssg: "Delete customer details failed" });
+      }
+    };
