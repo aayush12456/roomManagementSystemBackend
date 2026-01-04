@@ -2,6 +2,10 @@ const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const hotelController=require('../controllers/hotelController')
+
+const {
+  webhookHandler
+} = require("../controllers/hotelController");
 const router = express.Router();
 const storage = multer.diskStorage({});
 const upload = multer({
@@ -52,4 +56,11 @@ const upload = multer({
   router.post('/getNotificationToken/:id',hotelController.getNotifcationToken)
   router.post('/deleteNotificationToken/:id',hotelController.deleteNotifcationToken)
   router.get('/getMessageNotify/:id',hotelController.getMessageNotify)
+  router.post("/create/:id",hotelController.createSubscription);
+  router.post(
+    "/webhook",
+    webhookHandler
+  );
+  // router.get('/status/:id',hotelController.getStatus)
   module.exports = router;
+

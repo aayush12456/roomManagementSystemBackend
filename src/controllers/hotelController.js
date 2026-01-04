@@ -1,5 +1,10 @@
 const hotel=require('../models/hotelSchema')
 const Notify = require("../models/notifySchema");
+const Subscription=require("../models/subscriptionSchema")
+const Invoice=require("../models/invoiceSchema")
+const razorpay=require('../models/razorpay')
+const crypto = require("crypto");
+
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken");
 const twilio=require('twilio')
@@ -2689,3 +2694,149 @@ if (Array.isArray(hotelObj.roomArray)) {
         return res.status(500).send({ mssg: "Delete customer details failed" });
       }
     };
+
+
+    exports.createSubscription = async (req, res) => {
+      try {
+        const { planId } = req.body;
+        const hotelId = req.params.id;
+    
+        if (!planId) return res.status(400).json({ msg: "planId missing" });
+    
+        const subscription = await razorpay.subscriptions.create({
+          plan_id: planId,
+          total_count: 1,
+          customer_notify: 1,
+          notes: { hotelId }
+        });
+    
+        res.json({
+          msg: "Subscription created",
+          subscription
+        });
+    
+      } catch (err) {
+        console.log(err);   // 🔥 error dikhega
+        res.status(500).json({ error: err.error?.description || err.message });
+      }
+    };
+    
+    // exports.webhookHandler = async (req, res) => {
+
+    //   const signature = req.headers["x-razorpay-signature"];
+    
+    //   const expected = crypto
+    //     // .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+    //     .createHmac("sha256","MY_HOTEL_SECRET")
+    //     .update(req.body)
+    //     .digest("hex");
+    
+    //   if (signature !== expected) {
+    //     return res.status(400).send("Invalid signature");
+    //   }
+    
+    //   const event = JSON.parse(req.body.toString());
+    
+    //   if (event.event === "subscription.activated") {
+    //     const s = event.payload.subscription.entity;
+    
+    //     await Subscription.findOneAndUpdate(
+    //       { razorpaySubId: s.id },
+    //       {
+    //         hotelId: s.notes.hotelId,
+    //         planId: s.plan_id,
+    //         status: s.status,
+    //         startDate: new Date(s.start_at * 1000),
+    //         endDate: new Date(s.end_at * 1000)
+    //       },
+    //       { upsert: true }
+    //     );
+    //   }
+    
+    //   res.json({ status: "ok" });
+    // };
+    exports.webhookHandler = async (req, res) => {
+      try {
+    
+        const signature = req.headers["x-razorpay-signature"];
+    
+        const expected = crypto
+          .createHmac("sha256", "MY_HOTEL_SECRET")
+          .update(req.body)
+          .digest("hex");
+    
+        if (signature !== expected) {
+          console.log("❌ Invalid Signature");
+          return res.status(400).send("Invalid signature");
+        }
+    
+        const event = JSON.parse(req.body.toString());
+    
+        console.log("🚀 EVENT RECEIVED ===>", event.event);
+    
+        /* ================================
+           🎯 STEP-1 — Subscription Save
+        ==================================*/
+        if (event.event === "subscription.activated") {
+          const s = event.payload.subscription.entity;
+    
+          await Subscription.findOneAndUpdate(
+            { razorpaySubId: s.id },
+            {
+              hotelId: s.notes?.hotelId || null,
+              planId: s.plan_id,
+              status: s.status,
+              startDate: new Date(s.start_at * 1000),
+              endDate: new Date(s.end_at * 1000)
+            },
+            { upsert: true }
+          );
+    
+          console.log("✅ Subscription Saved / Updated");
+        }
+    
+        /* ================================
+           🎯 STEP-2 — INVOICE ONLY WHEN
+           PAYMENT SUCCESS
+        ==================================*/
+        if (event.event === "payment.captured") {
+          const p = event.payload.payment.entity;
+    
+          console.log("💰 PAYMENT OBJECT ===>");
+          console.log(p);
+          const rzpInvoice = await razorpay.invoices.fetch(p.invoice_id);
+
+          const subscriptionId = rzpInvoice.subscription_id;
+          try {
+            // prevent duplicates
+            const already = await Invoice.findOne({ paymentId: p.id });
+            if (already) {
+              console.log("⚠ Invoice Already Exists — Skipping");
+            } else {
+              const invoice = await Invoice.create({
+                paymentId: p.id,
+                hotelId: p.notes?.hotelId || null,
+                subscriptionId:subscriptionId,
+                amount: p.amount / 100,
+                currency: p.currency,
+                date: new Date()
+              });
+    
+              console.log("🎉 Invoice Created ===>");
+              console.log(invoice);
+            }
+          } catch (err) {
+            console.log("❌ INVOICE SAVE ERROR ===>");
+            console.log(err);
+          }
+        }
+    
+        return res.json({ status: "ok" });
+    
+      } catch (err) {
+        console.log("💥 WEBHOOK ERROR ===>");
+        console.log(err);
+        return res.status(500).send("Webhook error");
+      }
+    };
+    

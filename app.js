@@ -18,6 +18,11 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+app.post(
+    "/hotel/webhook",
+    express.raw({ type: "application/json" }),
+    require("./src/controllers/hotelController").webhookHandler
+  );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/hotel', hotelRoutes);
