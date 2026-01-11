@@ -2698,16 +2698,16 @@ if (Array.isArray(hotelObj.roomArray)) {
 
     exports.createSubscription = async (req, res) => {
       try {
-        const { planId } = req.body;
+        const { planId,amount } = req.body;
         const hotelId = req.params.id;
-    
+       
         if (!planId) return res.status(400).json({ msg: "planId missing" });
     
         const subscription = await razorpay.subscriptions.create({
           plan_id: planId,
           total_count: 1,
           customer_notify: 1,
-          notes: { hotelId }
+          notes: { hotelId,amount}
         });
     
         res.json({
@@ -2779,22 +2779,73 @@ if (Array.isArray(hotelObj.roomArray)) {
         ==================================*/
         if (event.event === "subscription.activated") {
           const s = event.payload.subscription.entity;
-    
+         console.log('s is subs',s)
           await Subscription.findOneAndUpdate(
             { razorpaySubId: s.id },
             {
               hotelId: s.notes?.hotelId || null,
               planId: s.plan_id,
+              amount: s.notes?.amount || 0, 
               status: s.status,
-              startDate: new Date(s.start_at * 1000),
-              endDate: new Date(s.end_at * 1000)
+              startDate: new Date(s.current_start * 1000), // ✅
+              endDate: new Date(s.current_end * 1000)
             },
             { upsert: true }
           );
     
           console.log("✅ Subscription Saved / Updated");
         }
-    
+      
+/* ====================================================
+       🔁 2️⃣ SUBSCRIPTION RENEWED (Weekly / Monthly charge)
+    ==================================================== */
+    if (event.event === "subscription.charged") {
+      const s = event.payload.subscription.entity;
+
+      await Subscription.findOneAndUpdate(
+        { razorpaySubId: s.id },
+        {
+          status: "active",
+          startDate: new Date(s.current_start * 1000),
+          endDate: new Date(s.current_end * 1000),
+        }
+      );
+
+      console.log("🔄 Subscription renewed – new expiry saved");
+    }
+  /* ====================================================
+       🛑 3️⃣ SUBSCRIPTION EXPIRED
+    ==================================================== */
+    if (event.event === "subscription.completed") {
+      const s = event.payload.subscription.entity;
+
+      await Subscription.findOneAndUpdate(
+        { razorpaySubId: s.id },
+        {
+          status: "expired",
+          endDate: new Date(s.current_end * 1000),
+        }
+      );
+
+      console.log("🛑 Subscription expired");
+    }
+ /* ====================================================
+       ❌ 4️⃣ SUBSCRIPTION CANCELLED BY USER / MERCHANT
+    ==================================================== */
+    if (event.event === "subscription.cancelled") {
+      const s = event.payload.subscription.entity;
+
+      await Subscription.findOneAndUpdate(
+        { razorpaySubId: s.id },
+        {
+          status: "cancelled",
+          endDate: new Date(s.current_end * 1000),
+        }
+      );
+
+      console.log("❌ Subscription cancelled");
+    }
+
         /* ================================
            🎯 STEP-2 — INVOICE ONLY WHEN
            PAYMENT SUCCESS
@@ -2839,4 +2890,46 @@ if (Array.isArray(hotelObj.roomArray)) {
         return res.status(500).send("Webhook error");
       }
     };
+     
+    //razorpay real fetch sync subscription data 
+    // (async () => {
+    //   try {
+    //     console.log("🔄 Syncing Razorpay → MongoDB (SAFE MODE)");
     
+    //     const now = Date.now();
+    
+    //     const all = await razorpay.subscriptions.all({ count: 100 });
+    
+    //     for (const s of all.items) {
+    //       const expiry = s.current_end * 1000;
+    
+    //       let status;
+    
+    //       // 🔥 REAL SaaS logic (not Razorpay status)
+    //       if (s.status === "cancelled") {
+    //         status = "cancelled";
+    //       } else if (expiry > now) {
+    //         status = "active";      // service period still running
+    //       } else {
+    //         status = "expired";    // service period finished
+    //       }
+    
+    //       await Subscription.findOneAndUpdate(
+    //         { razorpaySubId: s.id },
+    //         {
+    //           status,
+    //           startDate: new Date(s.current_start * 1000),
+    //           endDate: new Date(expiry),
+    //         }
+    //       );
+    
+    //       console.log(`✔ ${s.id} → ${status}`);
+    //     }
+    
+    //     console.log("✅ Razorpay → MongoDB sync completed safely");
+    //     process.exit();
+    //   } catch (err) {
+    //     console.error("❌ Sync failed:", err);
+    //     process.exit(1);
+    //   }
+    // })();
