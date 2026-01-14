@@ -2933,3 +2933,67 @@ if (Array.isArray(hotelObj.roomArray)) {
     //     process.exit(1);
     //   }
     // })();
+
+    exports.getExpiredSubscription = async (req, res) => {
+      try{
+     const hotelId=req.params.id
+     console.log('hotelid',hotelId)
+     const allSubscription=await Subscription.find({ hotelId: hotelId,status: "expired"})
+     const formatDate = (date) => {
+      const d = new Date(date);
+      const day = d.getDate();
+      const month = d.toLocaleString("en-US", { month: "short" });
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    };
+    const formattedSubscriptions = allSubscription.map((sub) => ({
+      ...sub._doc,
+      startDate: formatDate(sub.startDate),
+      endDate: formatDate(sub.endDate),
+    }));
+ 
+     res.status(200).send({
+      msg: "all subscription",
+      subscriptionArray:formattedSubscriptions // ✅ ARRAY OF OBJECTS
+    });
+      }catch(err){
+        console.log(err);   // 🔥 error dikhega
+        res.status(500).json({ error:err.message });
+      }
+    }
+
+
+    exports.getActiveSubscription = async (req, res) => {
+      try{
+     const hotelId=req.params.id
+     const activeSubscription=await Subscription.findOne({ hotelId: hotelId,status: "active"})
+     if (!activeSubscription) {
+      return res.status(200).json({
+        msg: "No active subscription",
+        activeSubscription: null,
+      });
+    }
+
+     const formatDate = (date) => {
+      const d = new Date(date);
+      const day = d.getDate();
+      const month = d.toLocaleString("en-US", { month: "short" });
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    };
+    const formattedActiveSubscription = {
+      ...activeSubscription._doc,
+      startDate: formatDate(activeSubscription.startDate),
+      endDate: formatDate(activeSubscription.endDate),
+    };
+
+ 
+     res.status(200).send({
+      msg: "all subscription",
+      activeSubscription:formattedActiveSubscription // ✅ ARRAY OF OBJECTS
+    });
+      }catch(err){
+        console.log(err);   // 🔥 error dikhega
+        res.status(500).json({ error:err.message });
+      }
+    }

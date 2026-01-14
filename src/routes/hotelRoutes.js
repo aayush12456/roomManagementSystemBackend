@@ -61,6 +61,8 @@ const upload = multer({
     "/webhook",
     webhookHandler
   );
+  router.get('/getExpiredSubscription/:id',hotelController.getExpiredSubscription)
+  router.get('/getActiveSubscription/:id',hotelController.getActiveSubscription)
   // router.get('/status/:id',hotelController.getStatus)
   module.exports = router;
 
