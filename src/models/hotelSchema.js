@@ -325,7 +325,13 @@ const hotelSchema = mongoose.Schema({
           type: mongoose.Schema.Types.ObjectId,
           ref: "notifyMessage"
         }
-      ]
+      ],
+      freeSubscription: {
+        status: { type: String, default: "trial" }, // trial | active | expired
+        plan: { type: String, default: "free" },   // free | monthly | yearly
+        startDate: Date,
+        endDate: Date
+      }
       
       
       

@@ -64,5 +64,7 @@ const upload = multer({
   router.get('/getExpiredSubscription/:id',hotelController.getExpiredSubscription)
   router.get('/getActiveSubscription/:id',hotelController.getActiveSubscription)
   // router.get('/status/:id',hotelController.getStatus)
+  router.post("/app-open/:id",hotelController.onAppOpen);
+  router.get("/free-trial/:id",hotelController.getFreeTrialSubscription);
   module.exports = router;
 

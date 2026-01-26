@@ -2997,3 +2997,166 @@ if (Array.isArray(hotelObj.roomArray)) {
         res.status(500).json({ error:err.message });
       }
     }
+
+
+    exports.onAppOpen = async (req, res) => {
+      try {
+        const hotelId = req.params.id;
+        const hotelObj = await hotel.findById(hotelId);
+    
+        if (!hotelObj) {
+          return res.status(404).json({ msg: "Hotel not found" });
+        }
+    
+        const now = new Date();
+    
+        // 🔹 CASE 1: Trial already exists
+        if (hotelObj.freeSubscription?.endDate) {
+          const endDate = new Date(hotelObj.freeSubscription.endDate);
+    
+          // 🔴 EXPIRED (real-time check)
+          if (now >= endDate) {
+            if (hotelObj.freeSubscription.status !== "ended") {
+              hotelObj.freeSubscription.status = "ended";
+              hotelObj.freeSubscription.plan = "expired";
+              await hotelObj.save();
+            }
+    
+            return res.json({
+              msg: "Free trial ended",
+              freeSubscription: hotelObj.freeSubscription
+            });
+          }
+    
+          // 🟢 ACTIVE
+          if (hotelObj.freeSubscription.status !== "trial") {
+            hotelObj.freeSubscription.status = "trial";
+            hotelObj.freeSubscription.plan = "free";
+            await hotelObj.save();
+          }
+    
+          return res.json({
+            msg: "Free trial active",
+            freeSubscription: hotelObj.freeSubscription
+          });
+        }
+    
+        // 🔹 CASE 2: START FREE TRIAL (FIRST TIME ONLY)
+        const start = new Date();
+    
+        // End = 7th day midnight (IST-safe)
+        const end = new Date(start);
+        end.setUTCDate(end.getUTCDate() + 7);
+        end.setUTCHours(18, 30, 0, 0); 
+    
+        hotelObj.freeSubscription = {
+          status: "trial",
+          plan: "free",
+          startDate: start,
+          endDate: end
+        };
+    
+        await hotelObj.save();
+    
+        return res.json({
+          msg: "Free trial started",
+          freeSubscription: hotelObj.freeSubscription
+        });
+    
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    };
+    
+    
+    // exports.onAppOpen = async (req, res) => {
+    //   try {
+    //     const hotelId = req.params.id;
+    //     const hotelObj = await hotel.findById(hotelId);
+    
+    //     if (!hotelObj) {
+    //       return res.status(404).json({ msg: "Hotel not found" });
+    //     }
+    
+    //     const now = new Date(); // 🔥 current exact time
+    
+    //     if (hotelObj.freeSubscription?.endDate) {
+    //       const endDate = new Date(hotelObj.freeSubscription.endDate);
+    
+    //       // 🔴 EXPIRE (only when actual time passed)
+    //       if (now >= endDate) {
+    //         if (hotelObj.freeSubscription.status !== "ended") {
+    //           hotelObj.freeSubscription.status = "ended";
+    //           hotelObj.freeSubscription.plan = "expired";
+    //           await hotelObj.save();
+    //         }
+    
+    //         return res.json({
+    //           msg: "Free trial ended",
+    //           freeSubscription: hotelObj.freeSubscription
+    //         });
+    //       }
+    
+    //       // 🟢 ACTIVE (still valid)
+    //       if (now < endDate) {
+    //         if (hotelObj.freeSubscription.status !== "trial") {
+    //           hotelObj.freeSubscription.status = "trial";
+    //           hotelObj.freeSubscription.plan = "free";
+    //           await hotelObj.save();
+    //         }
+    
+    //         return res.json({
+    //           msg: "Free trial active",
+    //           freeSubscription: hotelObj.freeSubscription
+    //         });
+    //       }
+    //     }
+    
+    //     // 🆕 START TRIAL (first time only)
+    //     const start = new Date();
+    //     const end = new Date();
+    //     end.setDate(end.getDate() + 7);
+    
+    //     hotelObj.freeSubscription = {
+    //       status: "trial",
+    //       plan: "free",
+    //       startDate: start,
+    //       endDate: end
+    //     };
+    
+    //     await hotelObj.save();
+    
+    //     res.json({
+    //       msg: "Free trial started",
+    //       freeSubscription: hotelObj.freeSubscription
+    //     });
+    
+    //   } catch (err) {
+    //     res.status(500).json({ error: err.message });
+    //   }
+    // };
+    
+    
+    exports.getFreeTrialSubscription = async (req,res)=>{
+      try{
+        const hotelId=req.params.id
+        const hotels = await hotel.findById(hotelId);
+        if(!hotels) return res.status(404).json({msg:"Hotel not found"});
+    
+        const now = new Date();
+
+        const diff = new Date(hotels.freeSubscription.endDate) - now;
+    
+        res.json({
+          status: hotels.freeSubscription.status,
+          plan: hotels.freeSubscription.plan,
+          startDate: hotels.freeSubscription.startDate,
+          endDate: hotels.freeSubscription.endDate,
+          remainingMs: diff > 0 ? diff : 0
+        });
+    
+      }catch(err){
+        res.status(500).json({error:err.message});
+      }
+    };
+    
