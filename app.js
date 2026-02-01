@@ -3,6 +3,10 @@ const db = require('./src/db/db');
 const startNotifyCleanupJob = require("./src/services/notifyWatcher");
 startNotifyCleanupJob();
 
+const startSubscriptionSyncJob = require("./src/services/subscribeExpiry");
+startSubscriptionSyncJob();
+
+
 const http =require('http')
 const cors = require("cors");
 const hotelRoutes = require('./src/routes/hotelRoutes');

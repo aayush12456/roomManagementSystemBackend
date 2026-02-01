@@ -6,8 +6,8 @@ function startNotifyCleanupJob() {
 
   console.log("⏳ Notify cleanup cron started…");
 
-  // ⏱ Every 1 minute
-  cron.schedule("*/1 * * * *", async () => {
+  // ⏱ Every 10 minute
+  cron.schedule("*/10 * * * *", async () => {
     try {
       console.log("🧹 Running notify cleanup...");
 

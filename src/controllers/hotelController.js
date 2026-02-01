@@ -2702,7 +2702,6 @@ if (Array.isArray(hotelObj.roomArray)) {
         const hotelId = req.params.id;
        
         if (!planId) return res.status(400).json({ msg: "planId missing" });
-    
         const subscription = await razorpay.subscriptions.create({
           plan_id: planId,
           total_count: 1,
@@ -2762,6 +2761,7 @@ if (Array.isArray(hotelObj.roomArray)) {
     
         const expected = crypto
           .createHmac("sha256", "MY_HOTEL_SECRET")
+          // .createHmac("sha256", "MY_SECRET") // this secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
           .update(req.body)
           .digest("hex");
     
