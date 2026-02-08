@@ -12,7 +12,7 @@ const cloudinary = require("cloudinary").v2;
 const dotenv=require('dotenv')
 const cron=require('cron')
 dotenv.config()
-const client = twilio(process.env.TWILIO_SID,process.env. TWILIO_AUTH_TOKEN);
+const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
 cloudinary.config({ 
    cloud_name:'dpzvj9ubu',
    api_key:'432745627761171',
@@ -306,11 +306,19 @@ const phone=req.body.phone
 console.log('phone in otp',phone)
 const randomCode = generateRandomCode();
 let message =  `Your Login OTP is ${randomCode}`;
-// await client.messages.create({
-//   body: message,
-//   from: '+15802093842',
-//   to: '+91' + phone, // User's phone number
-// });
+// try {
+//   // Attempt to send OTP via Twilio
+//   await client.messages.create({
+//     body: message,
+//     // from: '+12185304074',d86901110@gmail.com twillo number
+//     from: '+15107377816', // Your Twilio phone number
+//     to: '+91' +phone.toString(), // User's phone number
+//   });
+//   console.log('OTP sent via Twilio');
+// } catch (twilioError) {
+//   console.error('Twilio failed, attempting to send via email:', twilioError);
+// }
+
 res.status(201).send({
   mssg: 'otp send Successfully',
   otp: randomCode,
@@ -570,9 +578,12 @@ try{
 const phone=req.body.phone
 const hotelId=req.body.hotelId
 const hotelName=req.body.hotelName
+const profileName=req.body.profileName
+const profileImage=req.body.profileImage
 const hotelObj=await hotel.findById(hotelId)
 const token = await hotelObj.generateAuthToken();
-res.status(200).send({mssg:'fetch data',matchedHotels:[hotelObj],token:token,phone:phone})
+res.status(200).send({mssg:'fetch data',matchedHotels:[hotelObj],token:token,phone:phone,
+name:profileName,image:profileImage})
 
 }
 catch(e){
@@ -2799,9 +2810,35 @@ if (Array.isArray(hotelObj.roomArray)) {
 /* ====================================================
        🔁 2️⃣ SUBSCRIPTION RENEWED (Weekly / Monthly charge)
     ==================================================== */
+    // if (event.event === "subscription.charged") {
+    //   const s = event.payload.subscription.entity;
+
+    //   await Subscription.findOneAndUpdate(
+    //     { razorpaySubId: s.id },
+    //     {
+    //       status: "active",
+    //       startDate: new Date(s.current_start * 1000),
+    //       endDate: new Date(s.current_end * 1000),
+    //     }
+    //   );
+
+    //   console.log("🔄 Subscription renewed – new expiry saved");
+    // }
     if (event.event === "subscription.charged") {
       const s = event.payload.subscription.entity;
-
+    
+      const sub = await Subscription.findOne({ razorpaySubId: s.id });
+    
+      // 🛑 SAFETY GUARD:
+      // Agar subscription system / time se expire ho chuki hai
+      // to webhook usko revive nahi kar sakta
+      if (sub && sub.status === "expired") {
+        console.log(
+          "⛔ Ignored subscription.charged — already expired by system"
+        );
+        return res.json({ status: "ignored" });
+      }
+    
       await Subscription.findOneAndUpdate(
         { razorpaySubId: s.id },
         {
@@ -2810,7 +2847,7 @@ if (Array.isArray(hotelObj.roomArray)) {
           endDate: new Date(s.current_end * 1000),
         }
       );
-
+    
       console.log("🔄 Subscription renewed – new expiry saved");
     }
   /* ====================================================
@@ -2963,41 +3000,97 @@ if (Array.isArray(hotelObj.roomArray)) {
     }
 
 
-    exports.getActiveSubscription = async (req, res) => {
-      try{
-     const hotelId=req.params.id
-     const activeSubscription=await Subscription.findOne({ hotelId: hotelId,status: "active"})
-     if (!activeSubscription) {
-      return res.status(200).json({
-        msg: "No active subscription",
-        activeSubscription: null,
-      });
-    }
+    // exports.getActiveSubscription = async (req, res) => {
+    //   try{
+    //  const hotelId=req.params.id
+    //  const activeSubscription=await Subscription.findOne({ hotelId: hotelId,status: "active"})
+    //  if (!activeSubscription) {
+    //   return res.status(200).json({
+    //     msg: "No active subscription",
+    //     activeSubscription: null,
+    //   });
+    // }
 
-     const formatDate = (date) => {
-      const d = new Date(date);
-      const day = d.getDate();
-      const month = d.toLocaleString("en-US", { month: "short" });
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
-    };
-    const formattedActiveSubscription = {
-      ...activeSubscription._doc,
-      startDate: formatDate(activeSubscription.startDate),
-      endDate: formatDate(activeSubscription.endDate),
-    };
+    //  const formatDate = (date) => {
+    //   const d = new Date(date);
+    //   const day = d.getDate();
+    //   const month = d.toLocaleString("en-US", { month: "short" });
+    //   const year = d.getFullYear();
+    //   return `${day} ${month} ${year}`;
+    // };
+    // const formattedActiveSubscription = {
+    //   ...activeSubscription._doc,
+    //   startDate: formatDate(activeSubscription.startDate),
+    //   endDate: formatDate(activeSubscription.endDate),
+    // };
 
  
-     res.status(200).send({
-      msg: "all subscription",
-      activeSubscription:formattedActiveSubscription // ✅ ARRAY OF OBJECTS
-    });
-      }catch(err){
-        console.log(err);   // 🔥 error dikhega
-        res.status(500).json({ error:err.message });
+    //  res.status(200).send({
+    //   msg: "all subscription",
+    //   activeSubscription:formattedActiveSubscription // ✅ ARRAY OF OBJECTS
+    // });
+    //   }catch(err){
+    //     console.log(err);   // 🔥 error dikhega
+    //     res.status(500).json({ error:err.message });
+    //   }
+    // }
+    exports.getActiveSubscription = async (req, res) => {
+      try {
+        const hotelId = req.params.id;
+    
+        let activeSubscription = await Subscription.findOne({
+          hotelId: hotelId,
+          status: "active",
+        });
+    
+        // ✅ No active subscription
+        if (!activeSubscription) {
+          return res.status(200).json({
+            msg: "No active subscription",
+            activeSubscription: null,
+          });
+        }
+    
+        const now = new Date();
+        const endDate = new Date(activeSubscription.endDate);
+    
+        // ✅ CORE LOGIC: expiry check
+        if (now > endDate) {
+          activeSubscription.status = "expired";
+          await activeSubscription.save();
+    
+          return res.status(200).json({
+            msg: "Subscription expired",
+            activeSubscription: null,
+          });
+        }
+    
+        // ✅ Date formatting (UI purpose only)
+        const formatDate = (date) => {
+          const d = new Date(date);
+          const day = d.getDate();
+          const month = d.toLocaleString("en-US", { month: "short" });
+          const year = d.getFullYear();
+          return `${day} ${month} ${year}`;
+        };
+    
+        const formattedActiveSubscription = {
+          ...activeSubscription._doc,
+          startDate: formatDate(activeSubscription.startDate),
+          endDate: formatDate(activeSubscription.endDate),
+        };
+    
+        return res.status(200).json({
+          msg: "Active subscription",
+          activeSubscription: formattedActiveSubscription,
+        });
+    
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
       }
-    }
-
+    };
+    
 
     exports.onAppOpen = async (req, res) => {
       try {
