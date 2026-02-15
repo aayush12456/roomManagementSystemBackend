@@ -319,6 +319,21 @@ let message =  `Your Login OTP is ${randomCode}`;
 //   console.error('Twilio failed, attempting to send via email:', twilioError);
 // }
 
+//whats App
+// try {
+//   // Attempt to send OTP via Twilio
+//   await client.messages.create({
+//     body: message,
+//     // from: '+12185304074',d86901110@gmail.com twillo number
+//     from: 'whatsapp:+14155238886', // Your Twilio phone number
+//     to: 'whatsapp:+91' +phone.toString(), // User's phone number
+//   });
+//   console.log('OTP sent via Twilio');
+// } catch (twilioError) {
+//   console.error('Twilio failed, attempting to send via email:', twilioError);
+// }
+
+
 res.status(201).send({
   mssg: 'otp send Successfully',
   otp: randomCode,
@@ -730,6 +745,45 @@ hotelDetails.reportArray.push(
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
   customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
   })
+
+  let extraCustomerNames = "";
+
+  if (Array.isArray(extraCustomers) && extraCustomers.length > 0) {
+    extraCustomerNames = extraCustomers
+      .map(cust => cust.customerName)
+      .join(", ");
+  }
+  
+  // const message = `Dear ${customerName},
+
+  // Your check-in has been successfully completed.
+  
+  // Room Details:
+  // • Room Number: ${roomNo}
+  // • Check-out Date: ${checkOutDate}
+  // • Check-out Time: ${personalCheckOutTime}
+  
+  // ${extraCustomerNames ? `Additional Guest(s): ${extraCustomerNames}\n` : ""}
+  
+  // Thank you for choosing ${hotelDetails?.hotelName}.
+  // We wish you a pleasant and comfortable stay.`;
+  
+  // try {
+  //   await client.messages.create({
+  //     body: message,
+  //     from: "whatsapp:+14155238886", // Twilio Sandbox
+  //     to: "whatsapp:+91" + customerPhoneNumber,
+  //   });
+
+  //   console.log(
+  //     `✅ Checkout reminder sent to ${room.customerName} (${customerPhoneNumber})`
+  //   );
+  // } catch (err) {
+  //   console.error(
+  //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+  //     err.message
+  //   );
+  // }
 const data=await hotelDetails.save()
 console.log('data us',data)
 res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray,reportArray:hotelDetails.reportArray})
@@ -808,6 +862,24 @@ exports.deleteCustomerDetails = async (req, res) => {
       { $pull: { roomArray: { _id: customerId } } },
       { new: true }
     );
+    // const message=`Dear ${customerData.customerName},
+    // Thank you for staying with us. We hope you enjoyed your stay.
+    // Your feedback is valuable to us, and we look forward to welcoming you again.
+    // ${hotelObj.hotelName}
+    //   `
+    //   try {
+    //     await client.messages.create({
+    //       body: message,
+    //       from: "whatsapp:+14155238886", // Twilio Sandbox
+    //       to: "whatsapp:+91" + customerData.customerPhoneNumber,
+    //     });
+      
+    //   } catch (err) {
+    //     console.error(
+    //       `❌ WhatsApp failed for ${customerData.customerPhoneNumber}`,
+    //       err.message
+    //     );
+    //   }
 
     return res.status(200).send({
       mssg: "Customer details deleted successfully",
@@ -996,6 +1068,35 @@ const hotelDetails=await hotel.findOne({_id:hotelId})
 hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,todayDate:todayDate,selectedDate:selectedDate,
 roomNo:roomNo,customerName:customerName,customerAddress:customerAddress, totalPayment:totalPayment,advancePayment:advancePayment,
 customerPhoneNumber:customerPhoneNumber,frontDeskExecutiveName:frontDeskExecutiveName})
+
+const message=`Dear ${customerName},
+
+your booking at ${hotelDetails.hotelName} is confirmed.
+
+Room Details:
+Room Number : ${roomNo},
+Check-in:${selectedDate}
+
+Please carry Aadhar Card at check-in.
+For any assistance, contact hotel 
+
+${hotelDetails.hotelName}
+`
+
+// try {
+//   await client.messages.create({
+//     body: message,
+//     from: "whatsapp:+14155238886", // Twilio Sandbox
+//     to: "whatsapp:+91" + customerPhoneNumber,
+//   });
+
+// } catch (err) {
+//   console.error(
+//     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+//     err.message
+//   );
+// }
+
 const hotelDetailData=await hotelDetails.save()
 res.status(200).send({mssg:'add advance customers',getAdvanceCustomerDetailsArray:hotelDetailData.advanceRoomArray})
 }catch (e) {
@@ -1019,6 +1120,12 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
     try {
       const hotelId = req.params.id;
       const customerId = req.body.customerId;
+      const customerName=req.body.customerName
+      const checkInDate=req.body.checkInDate
+      const customerPhoneNumber=req.body.customerPhoneNumber
+
+
+      const hotelDetails=await hotel.findOne({_id:hotelId})
   
       const updatedHotel = await hotel.findByIdAndUpdate(
         hotelId,
@@ -1029,7 +1136,29 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
       if (!updatedHotel) {
         return res.status(404).send({ mssg: "Hotel not found" });
       }
-  
+      console.log('update hotelds',updatedHotel)
+      // const message=`Dear ${customerName},
+      // your booking at ${hotelDetails.hotelName} is cancelled.
+
+      // check-in Date:${checkInDate}
+
+      // If any refund is applicable, it will be processed as per the hotel’s cancellation policy.
+
+      // ${hotelDetails.hotelName}
+      // `
+      // try {
+      //   await client.messages.create({
+      //     body: message,
+      //     from: "whatsapp:+14155238886", // Twilio Sandbox
+      //     to: "whatsapp:+91" + customerPhoneNumber,
+      //   });
+      
+      // } catch (err) {
+      //   console.error(
+      //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+      //     err.message
+      //   );
+      // }
       res.status(200).send({
         mssg: "Customer details deleted successfully",
         getAdvanceCustomerDetailsArray: updatedHotel.advanceRoomArray,
@@ -3253,3 +3382,17 @@ if (Array.isArray(hotelObj.roomArray)) {
       }
     };
     
+
+    exports.getCheckOutMessage=async(req,res)=>{
+      try{
+      const hotelId=req.params.id
+      const getCustomerDetails=await hotel.findOne({_id:hotelId})
+      const detailsArray=getCustomerDetails.roomArray
+      res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray})
+      }catch(e){
+        console.error(e);
+        res.status(401).send({ mssg: 'get customer details failed' });
+      }
+      }
+
+     

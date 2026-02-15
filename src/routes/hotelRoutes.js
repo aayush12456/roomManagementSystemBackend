@@ -66,5 +66,6 @@ const upload = multer({
   // router.get('/status/:id',hotelController.getStatus)
   router.post("/app-open/:id",hotelController.onAppOpen);
   router.get("/free-trial/:id",hotelController.getFreeTrialSubscription);
+  router.get("/getCheckoutMessage/:id",hotelController.getCheckOutMessage);
   module.exports = router;
 
