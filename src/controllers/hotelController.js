@@ -1195,6 +1195,15 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
         customerAddress: req.body.customerAddress,
         customerPhoneNumber: req.body.customerPhoneNumber,
         frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+        floor:req.body.floor,
+        roomNo:req.body.roomNo,
+        roomId:req.body.roomId,
+        roomType:req.body.roomType,
+        todayDate:req.body.todayDate,
+        selectedDate:req.body.selectedDate,
+        totalPayment:req.body.totalPayment,
+        advancePayment:req.body.advancePayment
+        
       });
   
       const reportCustomer = hotelDetails.advanceRoomArray.find(
@@ -1209,10 +1218,18 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
         customerAddress: req.body.customerAddress,
         customerPhoneNumber: req.body.customerPhoneNumber,
         frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+        floor:req.body.floor,
+        roomNo:req.body.roomNo,
+        roomId:req.body.roomId,
+        roomType:req.body.roomType,
+        todayDate:req.body.todayDate,
+        selectedDate:req.body.selectedDate,
+        totalPayment:req.body.totalPayment,
+        advancePayment:req.body.advancePayment
       });
-  
+  console.log('report data',reportCustomer)
       await hotelDetails.save();
-  
+     console.log('details advance',hotelDetails.advanceRoomArray)
       res.status(200).send({
         mssg: "Customer details advance updated successfully",
         getAdvanceCustomerDetailsArray: hotelDetails.advanceRoomArray,
@@ -2117,7 +2134,8 @@ exports.addRoom = async (req, res) => {
     res.status(200).send({
       mssg: "New room added successfully",
       matchedHotels: hotelObj,
-      notifyMessageArray:hotelObj.notifyMessage
+      notifyMessageArray:hotelObj.notifyMessage,
+      roomNumber:notifyDoc.roomNo
     });
   } catch (e) {
     console.error(e);
@@ -2183,7 +2201,8 @@ exports.deleteRoom = async (req, res) => {
       matchedHotels: hotelObj,
       roomId:floorId,
       roomName:floor,
-      notifyMessageArray:hotelObj.notifyMessage
+      notifyMessageArray:hotelObj.notifyMessage,
+      roomNumber:notifyDoc.roomNo
     });
 
   } catch (e) {
@@ -3395,4 +3414,4 @@ if (Array.isArray(hotelObj.roomArray)) {
       }
       }
 
-     
+    

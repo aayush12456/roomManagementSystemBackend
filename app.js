@@ -6,6 +6,9 @@ startNotifyCleanupJob();
 const startSubscriptionSyncJob = require("./src/services/subscribeExpiry");
 startSubscriptionSyncJob();
 
+
+
+
 const http =require('http')
 const cors = require("cors");
 const hotelRoutes = require('./src/routes/hotelRoutes');
@@ -101,6 +104,7 @@ io.on('connection', (socket) => {
     socket.on('deleteNotificationToken',(message)=>{
         io.emit('getNotifyToken',message)
     })
+    
 });
 
 module.exports = { io };
