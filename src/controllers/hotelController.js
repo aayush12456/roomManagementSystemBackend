@@ -2919,8 +2919,8 @@ if (Array.isArray(hotelObj.roomArray)) {
         const signature = req.headers["x-razorpay-signature"];
     
         const expected = crypto
-          .createHmac("sha256", "MY_HOTEL_SECRET")
-          // .createHmac("sha256", "MY_SECRET") // this secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
+          // .createHmac("sha256", "MY_HOTEL_SECRET")
+          .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
           .update(req.body)
           .digest("hex");
     
