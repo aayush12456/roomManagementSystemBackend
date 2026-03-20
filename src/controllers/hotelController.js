@@ -2135,7 +2135,9 @@ exports.addRoom = async (req, res) => {
       mssg: "New room added successfully",
       matchedHotels: hotelObj,
       notifyMessageArray:hotelObj.notifyMessage,
-      roomNumber:notifyDoc.roomNo
+      roomNumber:notifyDoc.roomNo,
+      hotelName:hotelObj.hotelName,
+      hotelId:hotelId
     });
   } catch (e) {
     console.error(e);
@@ -2920,7 +2922,7 @@ if (Array.isArray(hotelObj.roomArray)) {
     
         const expected = crypto
           // .createHmac("sha256", "MY_HOTEL_SECRET")
-          .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
+          .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
           .update(req.body)
           .digest("hex");
     
@@ -3414,4 +3416,202 @@ if (Array.isArray(hotelObj.roomArray)) {
       }
       }
 
+      exports.getAllHotel = async (req, res) => {
+        try{
+       const Id=req.params.id
+       const getAllHotelDetails=await hotel.find()
+       res.status(200).send({mssg:'get all hotels',getAllHotelArray:getAllHotelDetails})
+        }
+      catch(e){
+        console.error(e);
+        res.status(401).send({ mssg: 'get All details failed' });
+      }
+    }
+
+    exports.deleteAdminStaffOwner = async (req, res) => {
+      try {
     
+        const hotelId = req.params.id;
+        const staffId = req.body.staffId;
+        const phone = req.body.phone;
+        const message = req.body.message;
+    
+        const hotelObj = await hotel.findById(hotelId);
+    
+        if (!hotelObj) {
+          return res.status(404).send({ mssg: "Hotel not found" });
+        }
+    
+        // ================= STAFF DELETE =================
+        if (message === "staff") {
+    
+          const staffObj = Object.fromEntries(hotelObj.staff);
+    
+          const staffKey = Object.keys(staffObj).find(
+            key => staffObj[key]._id.toString() === staffId
+          );
+    
+          if (!staffKey) {
+            return res.status(404).send({ mssg: "Staff not found" });
+          }
+    
+          const imagePublicId = staffObj[staffKey].imagePublicId;
+    
+          if (imagePublicId) {
+            await cloudinary.uploader.destroy(imagePublicId);
+          }
+    
+          delete staffObj[staffKey];
+    
+          hotelObj.staff = new Map(Object.entries(staffObj));
+    
+          await hotelObj.save();
+    
+          return res.status(200).send({
+            mssg: "Staff deleted successfully",
+            deletedStaffId: staffId
+          });
+        }
+    
+        // ================= OWNER DELETE =================
+        if (message === "owner") {
+    
+          const ownerKeys = ["owner1", "owner2", "owner3", "owner4"];
+    
+          const ownerKey = ownerKeys.find(
+            key => hotelObj[key]?.phone === phone
+          );
+    
+          if (!ownerKey) {
+            return res.status(404).send({ mssg: "Owner not found" });
+          }
+           console.log('owners key',ownerKey)
+          const imagePublicId = hotelObj[ownerKey].imagePublicId;
+    
+          if (imagePublicId) {
+            await cloudinary.uploader.destroy(imagePublicId);
+          }
+    
+          await hotel.updateOne(
+            { _id: hotelId },
+            { $unset: { [ownerKey]: "" } }
+          );
+        
+          return res.status(200).send({
+            mssg: "Owner deleted successfully",
+            deletedOwnerPhone: phone
+          });
+        }
+    
+      } catch (e) {
+    
+        console.error(e);
+    
+        res.status(500).send({
+          mssg: "Delete failed",
+          error: e.message
+        });
+    
+      }
+    };
+
+    exports.getAllName = async (req, res) => {
+      try {
+        const data = (await hotel.findById(req.params.id)).toObject();
+    
+        let namesArray = [];
+    
+        // 👉 Owners
+        for (let key in data) {
+          if (key.startsWith("owner")) {
+            if (data[key]?.name) {
+              namesArray.push(data[key].name);
+            }
+          }
+        }
+    
+        // 👉 Staff (Map hai)
+        if (data.staff) {
+          data.staff.forEach((value) => {
+            if (value?.name) {
+              namesArray.push(value.name);
+            }
+          });
+        }
+    
+        res.send({mssg: "get all names", names: namesArray });
+    
+      } catch (e) {
+        res.send({ mssg: "error" });
+      }
+    };
+    exports.deleteName = async (req, res) => {
+      try {
+        const Id = req.params.id;
+        const getAllHotelDetails = await hotel.findById({ _id: Id });
+        const deleteName=req.body.name
+        let namesArray = [];
+    
+        for (let key in getAllHotelDetails) {
+          if (key.startsWith("owner")) {
+            if (getAllHotelDetails[key]?.name) {
+              namesArray.push(getAllHotelDetails[key].name);
+            }
+          }
+        }
+    
+        // 👉 Staff (Map hai)
+        if (getAllHotelDetails.staff) {
+          getAllHotelDetails.staff.forEach((value) => {
+            if (value?.name) {
+              namesArray.push(value.name);
+            }
+          });
+        }
+      
+        let finalName=namesArray.filter((name)=>name!==deleteName)
+        res.status(200).send({
+          mssg: "get all names",
+          names: finalName,
+        });   
+      }
+      catch (e) {
+        console.error(e);
+        res.status(401).send({ mssg: 'get All details failed' });
+      }
+    }
+
+    exports.getAllHotelName = async (req, res) => {
+      try {
+    const Id=req.params.id
+     const hotelObj=await hotel.find()
+     let hotelNameArray=[]
+     hotelObj.map((hotel)=>{
+      hotelNameArray.push(hotel.hotelName)
+     })
+    
+     
+        res.send({mssg: "get all hotel names", hotelNames:hotelNameArray });
+    
+      } catch (e) {
+        res.send({ mssg: "error" });
+      }
+    };
+
+    exports.deleteHotelName = async (req, res) => {
+      try {
+        const Id = req.params.id;
+        const getAllHotelDetails = await hotel.findById({ _id: Id });
+        const hotelObj=await hotel.find()
+        let hotelNameArray=[]
+        hotelObj.map((hotel)=>{
+         hotelNameArray.push(hotel.hotelName)
+        })
+       hotelNameArray=hotelNameArray.filter((name)=>name!==getAllHotelDetails.hotelName)
+       res.send({mssg: "get all hotel names", hotelNames:hotelNameArray });
+      }
+      catch (e) {
+        console.error(e);
+        res.status(401).send({ mssg: 'get All details failed' });
+      }
+    }

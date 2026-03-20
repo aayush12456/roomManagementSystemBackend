@@ -104,7 +104,12 @@ io.on('connection', (socket) => {
     socket.on('deleteNotificationToken',(message)=>{
         io.emit('getNotifyToken',message)
     })
-    
+    socket.on('deleteName',(message)=>{
+        io.emit('getName',message)
+    })
+    socket.on('deleteHotelName',(message)=>{
+        io.emit('getHotelName',message)
+    })
 });
 
 module.exports = { io };

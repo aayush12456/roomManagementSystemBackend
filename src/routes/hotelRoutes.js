@@ -67,5 +67,11 @@ const upload = multer({
   router.post("/app-open/:id",hotelController.onAppOpen);
   router.get("/free-trial/:id",hotelController.getFreeTrialSubscription);
   router.get("/getCheckoutMessage/:id",hotelController.getCheckOutMessage);
+  router.get("/getAllHotel/:id",hotelController.getAllHotel);
+  router.post('/deleteAdminStaffOwner/:id',hotelController.deleteAdminStaffOwner)
+  router.get("/getAllName/:id",hotelController.getAllName);
+  router.post("/deleteName/:id",hotelController.deleteName);
+  router.get("/getAllHotelName/:id",hotelController.getAllHotelName);
+  router.post("/deleteHotelName/:id",hotelController.deleteHotelName);
   module.exports = router;
 
