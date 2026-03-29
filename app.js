@@ -110,6 +110,12 @@ io.on('connection', (socket) => {
     socket.on('deleteHotelName',(message)=>{
         io.emit('getHotelName',message)
     })
+    socket.on('accessAmount',(message)=>{
+        io.emit('getAccessAmount',message)
+    })
+    socket.on('deleteAccessAmount',(message)=>{
+        io.emit('getAccessAmount',message)
+    })
 });
 
 module.exports = { io };

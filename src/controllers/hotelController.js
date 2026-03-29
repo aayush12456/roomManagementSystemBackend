@@ -1,6 +1,7 @@
 const hotel=require('../models/hotelSchema')
 const Notify = require("../models/notifySchema");
 const Subscription=require("../models/subscriptionSchema")
+const Access=require('../models/accessSchema')
 const Invoice=require("../models/invoiceSchema")
 const razorpay=require('../models/razorpay')
 const crypto = require("crypto");
@@ -11,6 +12,7 @@ const twilio=require('twilio')
 const cloudinary = require("cloudinary").v2;
 const dotenv=require('dotenv')
 const cron=require('cron')
+const nodemailer=require('nodemailer')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
 cloudinary.config({ 
@@ -165,6 +167,10 @@ if (req.body.roomData) {
   }
 }
 
+const today = new Date();
+
+const formattedDate = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+
     const hotelData=new hotel({
       hotelName:req.body.hotelName,
       hotelAddress:req.body.hotelAddress,
@@ -189,10 +195,96 @@ hotelImgPublicId: hotelImagePublicId,
       totalRoom:req.body.totalRoom,
       totalFloor:req.body.totalFloor,
       room: roomObject, 
+      registerDate: formattedDate 
     })
     await hotelData.save();
-    console.log('hotelData',hotelData)
     res.status(201).send({ mssg: 'Data registered Successfully',registerData:hotelData});
+
+    // ✅ Create Time
+const createdAt = new Date().toLocaleString('en-IN', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+
+// ✅ Nodemailer setup
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "hoteloptix@gmail.com",
+    pass: "jbdt ytmn kjbz ipod",
+  },
+});
+
+// ✅ Mail Options
+const mailOptions = {
+  from: `"HotelOptix" <hoteloptix@gmail.com>`,
+  to: "hoteloptix@gmail.com",
+  subject: `✅ New Hotel Created - ${hotelData.hotelName}`,
+
+  html: `
+  <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
+    
+    <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+      
+      <!-- Header -->
+      <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
+        <h2 style="margin:0;">HotelOptix</h2>
+        <p style="margin:0; font-size:12px;">Admin Notification</p>
+      </div>
+
+      <!-- Success Banner -->
+      <div style="background:#22c55e; color:#ffffff; padding:12px; text-align:center; font-weight:bold;">
+        ✅ New Hotel Created
+      </div>
+
+      <!-- Body -->
+      <div style="padding:20px;">
+        
+        <p>A new hotel has been created in your system.</p>
+
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          
+          <tr>
+            <td style="padding:8px; font-weight:bold;">🏨 Hotel Name:</td>
+            <td style="padding:8px;">${hotelData.hotelName}</td>
+          </tr>
+
+          <tr style="background:#f9fafb;">
+            <td style="padding:8px; font-weight:bold;">📍 Location:</td>
+            <td style="padding:8px;">${req.body.hotelAddress}</td>
+          </tr>
+
+
+          <tr style="background:#f9fafb;">
+            <td style="padding:8px; font-weight:bold;">⏰ Created At:</td>
+            <td style="padding:8px;">${createdAt}</td>
+          </tr>
+
+        </table>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
+        This is an automated message from HotelOptix
+      </div>
+
+    </div>
+
+  </div>
+  `
+};
+
+// ✅ Send Mail
+// await transporter.sendMail(mailOptions);
+transporter.sendMail(mailOptions)
+  .then(() => console.log("Mail sent"))
+  .catch(err => console.log("Mail error", err));
+
+    console.log('hotelData',hotelData)
     }catch (e) {
         console.error(e);
         res.status(401).send({ mssg: 'Data does not added' });
@@ -681,7 +773,6 @@ catch(e){
   res.status(401).send({ mssg: 'comparison failed' });
 }
 }
-
 exports.addCustomerDetails=async(req,res)=>{
   console.log('req in custm',req.body)
 try{
@@ -792,6 +883,7 @@ res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.
   res.status(401).send({ mssg: 'customer addition failed' });
 }
 }
+
 
 exports.getCustomerDetails=async(req,res)=>{
 try{
@@ -1475,6 +1567,7 @@ exports.updateMyProfile = async (req, res) => {
     const phone = req.body.phone;
     const oldPhone = req.body.oldPhone;
     const address = req.body.address;
+    const email=req.body.email;
     const staffId = req.body.staffId;
     console.log('staff id', staffId);
     const updateImg = req.file;
@@ -1524,7 +1617,7 @@ exports.updateMyProfile = async (req, res) => {
 
       matchedStaff.address = address || matchedStaff.address;
       matchedStaff.phone = phone || matchedStaff.phone;
-
+     matchedStaff.email=email || matchedStaff.email
       await hotelObj.save();
 
       return res.status(200).send({
@@ -1568,6 +1661,7 @@ exports.updateMyProfile = async (req, res) => {
 
     updatedOwner.address = address;
     updatedOwner.phone = phone;
+    updatedOwner.email=email
 
     await hotelObj.save();
 
@@ -1625,7 +1719,7 @@ exports.updateMyProfile = async (req, res) => {
 
 exports.addStaffDetails = async (req, res) => {
   try {
-    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, 
+    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, staffEmail:email,
       staffPost: post,imgUrl:imgUrl,message:message} = req.body;
     const image = req.file;
     // Find hotel
@@ -1654,6 +1748,7 @@ exports.addStaffDetails = async (req, res) => {
       name,
       phone,
       address,
+      email,
       post,
       image: imageUrl,
       imagePublicId,
@@ -1828,6 +1923,7 @@ exports.updateStaffProfile = async (req, res) => {
     const name = req.body.staffName;
     const phone = req.body.staffPhone;
     const address = req.body.staffAddress;
+    const email=req.body.staffEmail
     const post = req.body.staffPost;
     const staffId = req.body.staffId;
     const image = req.file;
@@ -1877,6 +1973,7 @@ exports.updateStaffProfile = async (req, res) => {
       matchedStaff.phone = phone || matchedStaff.phone;
       matchedStaff.name = name || matchedStaff.name;
       matchedStaff.post = post || matchedStaff.post;
+      matchedStaff.email = email || matchedStaff.email;
 
       await hotelObj.save();
 
@@ -1989,6 +2086,7 @@ exports.addOwner = async (req, res) => {
     const name = req.body.ownerName;
     const address = req.body.ownerAddress;
     const phone = req.body.ownerPhone;
+    const email=req.body.ownerEmail
     const image = req.file
     const imgUrl=req.body.imgUrl
     const message=req.body.message
@@ -2036,6 +2134,7 @@ exports.addOwner = async (req, res) => {
       name,
       address,
       phone,
+      email,
       image: imageUrl,
       imagePublicId,
     };
@@ -2518,6 +2617,12 @@ exports.getMaintenanceCleanRoom=async(req,res)=>{
   exports.deleteHotel = async (req, res) => {
     try {
       const hotelId = req.body.id;
+      const name=req.body.name;
+      const email=req.body.email;
+      const phone=req.body.phone;
+      const hotelName=req.body.hotelName;
+      const hotelAddress=req.body.hotelAddress;
+      const deletedBy=req.body.post
   
       // 1️⃣ FIND HOTEL
       const hotelObj = await hotel.findOne({ _id: hotelId });
@@ -2608,7 +2713,101 @@ if (Array.isArray(hotelObj.roomArray)) {
   
       // 5️⃣ DELETE HOTEL DOCUMENT FROM DB
       await hotel.deleteOne({ _id: hotelId });
-  
+      const deletedAt = new Date().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "hoteloptix@gmail.com",
+          pass: "jbdt ytmn kjbz ipod", // yaha app password dalna
+        },
+      });
+
+      const mailOptions = {
+        from:`"${name}" <hoteloptix@gmail.com>`,
+        to: "hoteloptix@gmail.com", // 👉 user ko mail jayega
+        subject: `New Delete Request from ${hotelName}`,
+        html: `
+      <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
+        
+        <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
+            <h2 style="margin:0;">HotelOptix Support</h2>
+            <p style="margin:0; font-size:12px;">Hotel Deleted by owner</p>
+          </div>
+      
+          <!-- Alert Banner -->
+          <div style="background:#fee2e2; color:#991b1b; padding:15px; text-align:center; font-weight:bold;">
+            ⚠️ Hotel Deletion Alert!
+          </div>
+      
+          <!-- Body -->
+          <div style="padding:20px;">
+            
+            <p style="font-size:14px;">
+            A owner has deleted there hotel from the system
+            </p>
+      
+            <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;">
+              
+              <tr>
+                <td style="padding:10px; font-weight:bold;">👤 Owner Name:</td>
+                <td style="padding:10px;">${name}</td>
+              </tr>
+      
+              <tr style="background:#f9fafb;">
+                <td style="padding:10px; font-weight:bold;">📧 Email:</td>
+                <td style="padding:10px;">${email}</td>
+              </tr>
+      
+              <tr>
+                <td style="padding:10px; font-weight:bold;">📞 Phone:</td>
+                <td style="padding:10px;">${phone}</td>
+              </tr>
+      
+              <tr style="background:#f9fafb;">
+                <td style="padding:10px; font-weight:bold;">🏨 Deleted Hotel:</td>
+                <td style="padding:10px;">${hotelName}</td>
+              </tr>
+      
+              <tr>
+                <td style="padding:10px; font-weight:bold;">📍 Location:</td>
+                <td style="padding:10px;">${hotelAddress || "N/A"}</td>
+              </tr>
+      
+              <tr style="background:#f9fafb;">
+                <td style="padding:10px; font-weight:bold;">⏰ Deletion Time:</td>
+                <td style="padding:10px;">${deletedAt}</td>
+              </tr>
+      
+            </table>
+      
+            
+      
+          </div>
+      
+          <!-- Footer -->
+          <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
+            This is an automated alert from HotelOptix System.  
+            Please review this action if necessary.
+          </div>
+      
+        </div>
+      
+      </div>
+      `
+          
+      }
+      
+      await transporter.sendMail(mailOptions);
       res.status(200).send({
         mssg: "Hotel deleted successfully",
         deletedImages:hotelObj 
@@ -3613,5 +3812,241 @@ if (Array.isArray(hotelObj.roomArray)) {
       catch (e) {
         console.error(e);
         res.status(401).send({ mssg: 'get All details failed' });
+      }
+    }
+
+    exports.sendEmail = async (req, res) => {
+      try {
+        const Id = req.params.id;
+        const name = req.body.name;
+        const phone = req.body.phoneNumber;
+        const email = req.body.email;
+        const message = req.body.message;
+        const hotelName = req.body.hotelName;
+    
+        // transporter setup
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: "hoteloptix@gmail.com",
+            pass: "jbdt ytmn kjbz ipod", // yaha app password dalna
+          },
+        });
+    
+        // mail options
+        const mailOptions = {
+          from:`"${name}" <hoteloptix@gmail.com>`,
+          to: "hoteloptix@gmail.com", // 👉 user ko mail jayega
+          subject: `New Contact Request from ${hotelName}`,
+          html: `
+    <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
+      
+      <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
+          <h2 style="margin:0;">HotelOptix Support</h2>
+          <p style="margin:0; font-size:12px;">New Contact Request</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px;">
+          
+          <p style="font-size:14px;">You have received a new contact request from your application:</p>
+
+          <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <tr>
+              <td style="padding:8px; font-weight:bold;">👤 Name:</td>
+              <td style="padding:8px;">${name}</td>
+            </tr>
+            <tr style="background:#f9fafb;">
+              <td style="padding:8px; font-weight:bold;">📧 Email:</td>
+              <td style="padding:8px;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px; font-weight:bold;">📞 Phone:</td>
+              <td style="padding:8px;">${phone}</td>
+            </tr>
+            <tr style="background:#f9fafb;">
+              <td style="padding:8px; font-weight:bold;">🏨 Hotel:</td>
+              <td style="padding:8px;">${hotelName}</td>
+            </tr>
+          </table>
+
+          <!-- Message Box -->
+          <div style="margin-top:20px;">
+            <p style="font-weight:bold;">💬 Message:</p>
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px;">
+              ${message}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
+          This email was sent from HotelOptix Contact Form
+        </div>
+
+      </div>
+
+    </div>
+  `,
+        };
+    
+        // send mail
+        await transporter.sendMail(mailOptions);
+    
+        res.status(200).send({ mssg: "Email sent successfully" });
+    
+      } catch (e) {
+        console.error(e);
+        res.status(500).send({ mssg: "Email send failed" });
+      }
+    };
+
+    exports.replyEmail = async (req, res) => {
+      try {
+        const Id = req.params.id;
+        const userEmail = req.body.email;   // 👈 jisko reply bhejna hai
+        const replyMessage = req.body.message;
+        const name=req.body.name
+        const hotelName=req.body.hotelName
+    
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: "hoteloptix@gmail.com",
+            pass: "jbdt ytmn kjbz ipod",
+          },
+        });
+    
+        const mailOptions = {
+          from: "hoteloptix@gmail.com",
+          to: userEmail, // 👈 ab user ko mail jayega
+          bcc: "hoteloptix@gmail.com",
+          subject: "Reply from HotelOptix Support",
+          html: `
+          <div style="font-family: Arial, sans-serif; background:#f3f4f6; padding:20px;">
+            
+            <div style="max-width:700px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden;">
+    
+              <!-- Header -->
+              <div style="padding:20px; text-align:center; border-bottom:1px solid #e5e7eb;">
+                <h2 style="margin:0; color:#1f2937;">HotelOptix</h2>
+              </div>
+    
+              <!-- Body -->
+              <div style="padding:25px;">
+                <h3 style="margin-top:0;">Hello ${name},</h3>
+    
+                <p style="color:#374151;">
+                  We’re following up regarding your recent request.
+                </p>
+    
+                <p style="color:#374151;">
+                  ${replyMessage}
+                </p>
+    
+                <p style="margin-top:20px;">Best regards,</p>
+                <p><b>HotelOptix Support Team</b></p>
+              </div>
+              <!-- Footer -->
+              <div style="text-align:center; padding:15px; font-size:12px; color:#6b7280;">
+                © 2026 HotelOptix. All rights reserved.
+              </div>
+    
+            </div>
+    
+          </div>
+          `
+        };
+    
+        await transporter.sendMail(mailOptions);
+    
+        res.status(200).send({ mssg: "Reply sent successfully" });
+    
+      } catch (e) {
+        console.error(e);
+        res.status(500).send({ mssg: "Reply failed" });
+      }
+    };
+
+    exports.accessAmount = async (req, res) => {
+    try{
+      const id = req.params.id;
+      const name=req.body.name
+      const hotelName=req.body.hotelName
+      const amount=req.body.amounts
+      const phoneNumber=req.body.phoneNumber
+      const accessData=new Access({
+        name:name,
+        hotelId:id,
+        hotelName:hotelName,
+        amount:amount,
+        phone:phoneNumber,
+      })
+      await accessData.save();
+      const finalAccessData=await Access.find()
+      res.status(201).send({ mssg: 'Data access amount',accessData:finalAccessData});
+    }
+    catch (e) {
+      console.error(e);
+      res.status(401).send({ mssg: 'get All details failed' });
+    }
+
+    }
+
+    exports.getAccessAmount = async (req, res) => {
+      try{
+        const id=req.params.id
+        const allAccessAmount=await Access.find()
+        
+        res.status(201).send({ mssg: 'Data access amount',accessData:allAccessAmount});
+      }
+      catch (e) {
+        console.error(e);
+        res.status(401).send({ mssg: 'get All details failed' });
+      }
+    }
+
+    exports.revokeAccessAmount = async (req, res) => {
+      try {
+        const id = req.params.id;
+    
+        // delete
+        await Access.findByIdAndDelete(id);
+    
+        // get updated list
+        const remainingAccount = await Access.find();
+    
+        res.status(200).send({
+          mssg: 'Access revoked successfully',
+          accessData: remainingAccount,
+        });
+    
+      } catch (e) {
+        console.error(e);
+        res.status(500).send({ mssg: 'Revoke access failed' });
+      }
+    };
+
+    
+    exports.getAllAdminName = async (req, res) => {
+      try{
+      const id=req.params.id
+      const obj={
+        name:'diptanshu chouhan',
+        phone:'9755641585',
+        email:'diptanshu88277@gmail.com'
+      }
+      res.status(200).send({
+        mssg: 'Access all admin successfully',
+        accessAllData:obj,
+      });
+      }
+      catch (e) {
+        console.error(e);
+        res.status(500).send({ mssg: 'Revoke access failed' });
       }
     }

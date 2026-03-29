@@ -73,5 +73,11 @@ const upload = multer({
   router.post("/deleteName/:id",hotelController.deleteName);
   router.get("/getAllHotelName/:id",hotelController.getAllHotelName);
   router.post("/deleteHotelName/:id",hotelController.deleteHotelName);
+  router.post("/sendEmail/:id",hotelController.sendEmail);
+  router.post("/replyEmail/:id",hotelController.replyEmail);
+  router.post("/accessAmount/:id",hotelController.accessAmount);
+  router.get("/getAccessAmount/:id",hotelController.getAccessAmount);
+  router.post("/revokeAccessAmount/:id",hotelController.revokeAccessAmount);
+  router.get("/getAllAdminName/:id",hotelController.getAllAdminName);
   module.exports = router;
 
