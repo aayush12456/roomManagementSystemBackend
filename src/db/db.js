@@ -1,6 +1,6 @@
 const mongoose=require('mongoose')
-// const dotenv=require('dotenv')
-// dotenv.config()
+const dotenv=require('dotenv')
+dotenv.config()
 // mongodbCompass local database configuration
 // mongoose.connect("mongodb://127.0.0.1/hotelManagementSystem").then(()=>{
 //     console.log("Database connected successfully")
@@ -10,7 +10,7 @@ const mongoose=require('mongoose')
 
 
 // MONGODB_CONNECT_URL yha mera production server ka url aayega jo ki .env me present hai
-mongoose.connect("mongodb+srv://guptaanmoul2001_db_user:aayush25@roomproject.vyrgdat.mongodb.net/hotelManagementSystem",{
+mongoose.connect(process.env.url,{
     serverSelectionTimeoutMS: 5000, // Increase timeout
     ssl: true, // Enable SSL
     tlsAllowInvalidCertificates: true, 

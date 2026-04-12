@@ -12,7 +12,7 @@ const subscriptionSchema = new mongoose.Schema(
     razorpaySubId: {
       type: String,
       required: true,
-      unique: true
+      // unique: true
     },
 
     planId: {

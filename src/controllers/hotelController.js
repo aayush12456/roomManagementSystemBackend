@@ -15,13 +15,14 @@ const cron=require('cron')
 const nodemailer=require('nodemailer')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
+
 cloudinary.config({ 
-   cloud_name:'dpzvj9ubu',
-   api_key:'432745627761171',
-   api_secret:'YnrBTkdAPPz-AsnPEBkL1HfDfYA'
-  });
+  cloud_name:process.env.CLOUD_NAME,
+  api_key:process.env.API_KEY,
+  api_secret:process.env.API_SECRET
+ });
   exports.hotelRegister = async (req, res) => {
-    console.log('register data is',req.body)
+    // console.log('register data is',req.body)
     let cloudImageUrls = []
     let ownerImagePublicIds = [];
 
@@ -214,7 +215,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "hoteloptix@gmail.com",
-    pass: "jbdt ytmn kjbz ipod",
+    pass:process.env.password,
   },
 });
 
@@ -284,7 +285,7 @@ transporter.sendMail(mailOptions)
   .then(() => console.log("Mail sent"))
   .catch(err => console.log("Mail error", err));
 
-    console.log('hotelData',hotelData)
+    // console.log('hotelData',hotelData)
     }catch (e) {
         console.error(e);
         res.status(401).send({ mssg: 'Data does not added' });
@@ -395,7 +396,7 @@ exports.getHotelName = async (req, res) => {
 exports.getOtp=async(req,res)=>{
 try{
 const phone=req.body.phone
-console.log('phone in otp',phone)
+// console.log('phone in otp',phone)
 const randomCode = generateRandomCode();
 let message =  `Your Login OTP is ${randomCode}`;
 // try {
@@ -489,7 +490,7 @@ exports.compareOtp = async (req, res) => {
 
     // ============ CASE 1: anotherHotelId & anotherPhone NOT provided ============
     if (!anotherHotelId || !anotherPhone) {
-      console.log("Running single-hotel comparison logic...");
+      // console.log("Running single-hotel comparison logic...");
 
       // --- Check phone among all owners ---
       let matchedProfile = null;
@@ -707,7 +708,7 @@ exports.deleteSwitchProfile = async (req, res) => {
     const hotelId = req.body.hotelId;
     const phone = String(req.body.phone || '').trim();
     const anotherHotelId = req.body.anotherHotelId;
-    console.log('another hotel id',anotherHotelId)
+    // console.log('another hotel id',anotherHotelId)
     const anotherPhone = String(req.body.anotherPhone || '').trim();
 
     // --- Validate ---
@@ -763,7 +764,7 @@ exports.deleteSwitchProfile = async (req, res) => {
 exports.getRoomDetails=async(req,res)=>{
 try{
 const id=req.params.id
-console.log('id is',id)
+// console.log('id is',id)
 const hotelObj=await hotel.findOne({_id:id})
 res.status(200).send({mssg:'fetch data',hotelObj:hotelObj})
 }
@@ -773,8 +774,9 @@ catch(e){
   res.status(401).send({ mssg: 'comparison failed' });
 }
 }
+
 exports.addCustomerDetails=async(req,res)=>{
-  console.log('req in custm',req.body)
+  // console.log('req in custm',req.body)
 try{
 const hotelId=req.params.id  
 const roomId=req.body.roomId
@@ -788,7 +790,7 @@ const customerPhoneNumber=req.body.customerPhoneNumber
 const totalCustomer=req.body.totalCustomer
 const relation=req.body.relation
 const customerIdProof=req.body.customerIdProof
-const customerAadharNumber=req.body.customerAadharNumber
+const customerIdDetails=req.body.customerIdDetails
 const customerCity=req.body.customerCity
 const customerOccupation=req.body.customerOccupation
 const customerDestination=req.body.customerDestination
@@ -817,13 +819,13 @@ let imagePublicId = null;
       imagePublicId = uploadResponse.public_id;
     }
 
-console.log('customer signature',customerSignature)
-console.log('customer signature url',signatureUrl)
+// console.log('customer signature',customerSignature)
+// console.log('customer signature url',signatureUrl)
 const hotelDetails=await hotel.findOne({_id:hotelId})
 
 hotelDetails.roomArray.push(
 {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof, customerAadharNumber:customerAadharNumber, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
+totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof,customerIdDetails:customerIdDetails, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
 checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
 totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
 customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
@@ -831,7 +833,7 @@ customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: ext
 
 hotelDetails.reportArray.push(
   {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-  totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerAadharNumber:customerAadharNumber,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
+  totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerIdDetails:customerIdDetails,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
   checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
   totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
   customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
@@ -876,14 +878,13 @@ hotelDetails.reportArray.push(
   //   );
   // }
 const data=await hotelDetails.save()
-console.log('data us',data)
+// console.log('data us',data)
 res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray,reportArray:hotelDetails.reportArray})
 }catch(e){
   console.error(e);
   res.status(401).send({ mssg: 'customer addition failed' });
 }
 }
-
 
 exports.getCustomerDetails=async(req,res)=>{
 try{
@@ -1061,7 +1062,7 @@ exports.updateCustomerDetails = async (req, res) => {
   try {
     const hotelId = req.params.id;
     const roomId = req.body.roomId;
-    console.log('update room id', roomId);
+    // console.log('update room id', roomId);
 
     const hotelDetails = await hotel.findOne({ _id: hotelId });
     if (!hotelDetails) {
@@ -1078,7 +1079,7 @@ exports.updateCustomerDetails = async (req, res) => {
           totalCustomer: req.body.totalCustomer,
           relation:req.body.relation,
           customerIdProof: req.body.customerIdProof,
-          customerAadharNumber:req.body.customerAadharNumber,
+          customerIdDetails:req.body.customerIdDetails,
           customerCity: req.body.customerCity,
           customerOccupation:req.body.customerOccupation,
           customerDestination:req.body.customerDestination,
@@ -1107,7 +1108,7 @@ exports.updateCustomerDetails = async (req, res) => {
           totalCustomer: req.body.totalCustomer,
           relation:req.body.relation,
           customerIdProof: req.body.customerIdProof,
-          customerAadharNumber:req.body.customerAadharNumber,
+          customerIdDetails:req.body.customerIdDetails,
           customerCity: req.body.customerCity,
           customerOccupation:req.body.customerOccupation,
           customerDestination:req.body.customerDestination,
@@ -1228,7 +1229,7 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
       if (!updatedHotel) {
         return res.status(404).send({ mssg: "Hotel not found" });
       }
-      console.log('update hotelds',updatedHotel)
+      // console.log('update hotelds',updatedHotel)
       // const message=`Dear ${customerName},
       // your booking at ${hotelDetails.hotelName} is cancelled.
 
@@ -1266,7 +1267,7 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
     try {
       const hotelId = req.params.id;
       const roomId = req.body.roomId;
-      console.log('update room id',roomId)
+      // console.log('update room id',roomId)
       const hotelDetails = await hotel.findOne({ _id: hotelId });
       if (!hotelDetails) {
         return res.status(404).send({ mssg: "Hotel not found" });
@@ -1319,9 +1320,9 @@ exports.getCustomerDetailsAdvance=async(req,res)=>{
         totalPayment:req.body.totalPayment,
         advancePayment:req.body.advancePayment
       });
-  console.log('report data',reportCustomer)
+  // console.log('report data',reportCustomer)
       await hotelDetails.save();
-     console.log('details advance',hotelDetails.advanceRoomArray)
+    //  console.log('details advance',hotelDetails.advanceRoomArray)
       res.status(200).send({
         mssg: "Customer details advance updated successfully",
         getAdvanceCustomerDetailsArray: hotelDetails.advanceRoomArray,
@@ -1561,7 +1562,7 @@ exports.deletePersonalCustomerDetails = async (req, res) => {
 //   }
 // };
 exports.updateMyProfile = async (req, res) => {
-  console.log('body is', req.body);
+  // console.log('body is', req.body);
   try {
     const hotelId = req.body.id;
     const phone = req.body.phone;
@@ -1569,12 +1570,12 @@ exports.updateMyProfile = async (req, res) => {
     const address = req.body.address;
     const email=req.body.email;
     const staffId = req.body.staffId;
-    console.log('staff id', staffId);
+    // console.log('staff id', staffId);
     const updateImg = req.file;
-    console.log('update img', updateImg);
+    // console.log('update img', updateImg);
 
     const hotelObj = await hotel.findById(hotelId);
-    console.log('hotel obj', hotelObj);
+    // console.log('hotel obj', hotelObj);
     if (!hotelObj) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
@@ -1594,13 +1595,13 @@ exports.updateMyProfile = async (req, res) => {
         return res.status(404).send({ mssg: "Staff with staffId not found" });
       }
 
-      console.log("Matched Staff:", matchedStaff);
+      // console.log("Matched Staff:", matchedStaff);
 
       // Agar update karna ho staff details bhi update kar do
       if (updateImg) {
         if (matchedStaff.imagePublicId) {
           await cloudinary.uploader.destroy(matchedStaff.imagePublicId);
-          console.log("Old staff image deleted:", matchedStaff.imagePublicId);
+          // console.log("Old staff image deleted:", matchedStaff.imagePublicId);
         }
 
         const result = await cloudinary.uploader.upload(updateImg.path, {
@@ -1637,7 +1638,7 @@ exports.updateMyProfile = async (req, res) => {
       }
     }
 
-    console.log("update owner", updatedOwner);
+    // console.log("update owner", updatedOwner);
     if (!updatedOwner) {
       return res.status(404).send({ mssg: "Owner with oldPhone not found" });
     }
@@ -1645,7 +1646,7 @@ exports.updateMyProfile = async (req, res) => {
     if (updateImg) {
       if (updatedOwner.imagePublicId) {
         await cloudinary.uploader.destroy(updatedOwner.imagePublicId);
-        console.log("Old image deleted:", updatedOwner.imagePublicId);
+        // console.log("Old image deleted:", updatedOwner.imagePublicId);
       }
 
       const result = await cloudinary.uploader.upload(updateImg.path, {
@@ -1725,7 +1726,7 @@ exports.addStaffDetails = async (req, res) => {
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
-    console.log('hotel obj in staff',hotelObj)
+    // console.log('hotel obj in staff',hotelObj)
     // Upload image to Cloudinary (if exists)
     let imageUrl = null;
     let imagePublicId = null;
@@ -1783,7 +1784,7 @@ exports.addStaffDetails = async (req, res) => {
     const notifyMessageArray=await Notify.find()
     // Save
     await hotelObj.save();
-console.log('hotel obj in final',hotelObj)
+// console.log('hotel obj in final',hotelObj)
     res.status(200).send({
       mssg: "Staff added successfully",
       hotelObj,
@@ -1833,7 +1834,7 @@ exports.getStaffPlusOwner=async(req,res)=>{
 exports.deleteStaffOwner = async (req, res) => {
   try {
     const hotelId = req.params.id;
-    console.log('hotelid',hotelId)
+    // console.log('hotelid',hotelId)
     const staffId = req.body.staffId;
     const imgUrl=req.body.imgUrl
     const message=req.body.message
@@ -1842,7 +1843,7 @@ exports.deleteStaffOwner = async (req, res) => {
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
-    console.log('obj hotel',hotelObj)
+    // console.log('obj hotel',hotelObj)
 
     // Convert Map to object
     const staffObj = Object.fromEntries(hotelObj.staff);
@@ -1851,7 +1852,7 @@ exports.deleteStaffOwner = async (req, res) => {
     const staffKey = Object.keys(staffObj).find(
       (key) => staffObj[key]._id.toString() === staffId
     );
-    console.log('staff is ',staffKey)
+    // console.log('staff is ',staffKey)
     if (!staffKey) {
       return res.status(404).send({ mssg: "Staff not found" });
     }
@@ -1948,13 +1949,13 @@ exports.updateStaffProfile = async (req, res) => {
         return res.status(404).send({ mssg: "Staff with staffId not found" });
       }
 
-      console.log("Matched Staff:", matchedStaff);
+      // console.log("Matched Staff:", matchedStaff);
 
       // Agar update karna ho staff details bhi update kar do
       if (image) {
         if (matchedStaff.imagePublicId) {
           await cloudinary.uploader.destroy(matchedStaff.imagePublicId);
-          console.log("Old staff image deleted:", matchedStaff.imagePublicId);
+          // console.log("Old staff image deleted:", matchedStaff.imagePublicId);
         }
 
         const result = await cloudinary.uploader.upload(image.path, {
@@ -2177,7 +2178,7 @@ exports.addRoom = async (req, res) => {
     const { floor, roomType, bedType, roomNumber,name,imgUrl,message } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: hotelId });
-    console.log('hotel is',hotelObj.totalRoom)
+    // console.log('hotel is',hotelObj.totalRoom)
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
 
     const room = hotelObj.room;
@@ -2383,7 +2384,7 @@ exports.deleteRoom = async (req, res) => {
 
 exports.addFloor = async (req, res) => {
   try {
-    console.log("body is", req.body);
+    // console.log("body is", req.body);
 
     const {
       id: hotelId,
@@ -2483,7 +2484,7 @@ exports.deleteFloor = async (req, res) => {
     // Check if room is a Map or normal object
     const isMap = room instanceof Map;
 
-    console.log("Before delete floors:", isMap ? Array.from(room.keys()) : Object.keys(room));
+    // console.log("Before delete floors:", isMap ? Array.from(room.keys()) : Object.keys(room));
 
     let floorExists = false;
     let deletedRoomCount = 0;
@@ -2531,10 +2532,10 @@ exports.deleteFloor = async (req, res) => {
 
     await hotelObj.save();
 
-    console.log(
-      "After delete floors:",
-      isMap ? Array.from(hotelObj.room.keys()) : Object.keys(hotelObj.room)
-    );
+    // console.log(
+    //   "After delete floors:",
+    //   isMap ? Array.from(hotelObj.room.keys()) : Object.keys(hotelObj.room)
+    // );
 
     res.status(200).send({
       mssg: "Floor deleted successfully",
@@ -2569,7 +2570,7 @@ maintainCleanRoomArray.push({roomId:roomId,floorName:floorName,roomNo:roomNo,roo
   type:type,mainCleanerName:mainCleanerName,todayDate:todayDate})
 
 const data=await hotelObj.save()
-console.log('data us',data)
+// console.log('data us',data)
 res.status(200).send({mssg:'maintainCleanRoom',maintainCleanRoom:data.maintainCleanRoom })
 }catch(e){
   console.error("Error maintain cleaner room:", e);
@@ -2695,7 +2696,7 @@ if (Array.isArray(hotelObj.roomArray)) {
   
       // 3️⃣ REMOVE DUPLICATES (safety)
       allPublicIds = [...new Set(allPublicIds)];
-      console.log('all public',allPublicIds)
+      // console.log('all public',allPublicIds)
 
       const profileClean = await hotel.updateMany(
         {},
@@ -2705,7 +2706,7 @@ if (Array.isArray(hotelObj.roomArray)) {
           },
         }
       );
-      console.log("Profile removed from hotels:", profileClean.modifiedCount);
+      // console.log("Profile removed from hotels:", profileClean.modifiedCount);
       // 4️⃣ DELETE FROM CLOUDINARY
       for (let id of allPublicIds) {
         await cloudinary.uploader.destroy(id);
@@ -2725,7 +2726,7 @@ if (Array.isArray(hotelObj.roomArray)) {
         service: "gmail",
         auth: {
           user: "hoteloptix@gmail.com",
-          pass: "jbdt ytmn kjbz ipod", // yaha app password dalna
+          pass:process.env.password, // yaha app password dalna
         },
       });
 
@@ -3064,7 +3065,8 @@ if (Array.isArray(hotelObj.roomArray)) {
         if (!planId) return res.status(400).json({ msg: "planId missing" });
         const subscription = await razorpay.subscriptions.create({
           plan_id: planId,
-          total_count: 1,
+          // total_count: 1,
+          total_count: 12,
           customer_notify: 1,
           notes: { hotelId,amount}
         });
@@ -3114,168 +3116,288 @@ if (Array.isArray(hotelObj.roomArray)) {
     
     //   res.json({ status: "ok" });
     // };
-    exports.webhookHandler = async (req, res) => {
-      try {
+//     exports.webhookHandler = async (req, res) => {
+//       try {
     
-        const signature = req.headers["x-razorpay-signature"];
+//         const signature = req.headers["x-razorpay-signature"];
     
-        const expected = crypto
-          // .createHmac("sha256", "MY_HOTEL_SECRET")
-          .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
-          .update(req.body)
-          .digest("hex");
+//         const expected = crypto
+//           .createHmac("sha256", "MY_HOTEL_SECRET")
+//           // .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
+//           .update(req.body)
+//           .digest("hex");
     
-        if (signature !== expected) {
-          console.log("❌ Invalid Signature");
-          return res.status(400).send("Invalid signature");
-        }
+//         if (signature !== expected) {
+//           console.log("❌ Invalid Signature");
+//           return res.status(400).send("Invalid signature");
+//         }
     
-        const event = JSON.parse(req.body.toString());
+//         const event = JSON.parse(req.body.toString());
     
-        console.log("🚀 EVENT RECEIVED ===>", event.event);
+//         console.log("🚀 EVENT RECEIVED ===>", event.event);
     
-        /* ================================
-           🎯 STEP-1 — Subscription Save
-        ==================================*/
-        if (event.event === "subscription.activated") {
-          const s = event.payload.subscription.entity;
-         console.log('s is subs',s)
-          await Subscription.findOneAndUpdate(
-            { razorpaySubId: s.id },
-            {
-              hotelId: s.notes?.hotelId || null,
-              planId: s.plan_id,
-              amount: s.notes?.amount || 0, 
-              status: s.status,
-              startDate: new Date(s.current_start * 1000), // ✅
-              endDate: new Date(s.current_end * 1000)
-            },
-            { upsert: true }
-          );
+//         /* ================================
+//            🎯 STEP-1 — Subscription Save
+//         ==================================*/
+//         if (event.event === "subscription.activated") {
+//           const s = event.payload.subscription.entity;
+//          console.log('s is subs',s)
+//           await Subscription.findOneAndUpdate(
+//             { razorpaySubId: s.id },
+//             {
+//               hotelId: s.notes?.hotelId || null,
+//               planId: s.plan_id,
+//               amount: s.notes?.amount || 0, 
+//               status: s.status,
+//               startDate: new Date(s.current_start * 1000), // ✅
+//               endDate: new Date(s.current_end * 1000)
+//             },
+//             { upsert: true }
+//           );
     
-          console.log("✅ Subscription Saved / Updated");
-        }
+//           console.log("✅ Subscription Saved / Updated");
+//         }
       
-/* ====================================================
-       🔁 2️⃣ SUBSCRIPTION RENEWED (Weekly / Monthly charge)
-    ==================================================== */
-    // if (event.event === "subscription.charged") {
-    //   const s = event.payload.subscription.entity;
+// /* ====================================================
+//        🔁 2️⃣ SUBSCRIPTION RENEWED (Weekly / Monthly charge)
+//     ==================================================== */
+//     // if (event.event === "subscription.charged") {
+//     //   const s = event.payload.subscription.entity;
 
-    //   await Subscription.findOneAndUpdate(
-    //     { razorpaySubId: s.id },
-    //     {
-    //       status: "active",
-    //       startDate: new Date(s.current_start * 1000),
-    //       endDate: new Date(s.current_end * 1000),
-    //     }
-    //   );
+//     //   await Subscription.findOneAndUpdate(
+//     //     { razorpaySubId: s.id },
+//     //     {
+//     //       status: "active",
+//     //       startDate: new Date(s.current_start * 1000),
+//     //       endDate: new Date(s.current_end * 1000),
+//     //     }
+//     //   );
 
-    //   console.log("🔄 Subscription renewed – new expiry saved");
-    // }
-    if (event.event === "subscription.charged") {
-      const s = event.payload.subscription.entity;
+//     //   console.log("🔄 Subscription renewed – new expiry saved");
+//     // }
+//     if (event.event === "subscription.charged") {
+//       const s = event.payload.subscription.entity;
     
-      const sub = await Subscription.findOne({ razorpaySubId: s.id });
+//       const sub = await Subscription.findOne({ razorpaySubId: s.id });
     
-      // 🛑 SAFETY GUARD:
-      // Agar subscription system / time se expire ho chuki hai
-      // to webhook usko revive nahi kar sakta
-      if (sub && sub.status === "expired") {
-        console.log(
-          "⛔ Ignored subscription.charged — already expired by system"
-        );
-        return res.json({ status: "ignored" });
-      }
+//       // 🛑 SAFETY GUARD:
+//       // Agar subscription system / time se expire ho chuki hai
+//       // to webhook usko revive nahi kar sakta
+//       if (sub && sub.status === "expired") {
+//         console.log(
+//           "⛔ Ignored subscription.charged — already expired by system"
+//         );
+//         return res.json({ status: "ignored" });
+//       }
     
-      await Subscription.findOneAndUpdate(
-        { razorpaySubId: s.id },
-        {
+//       await Subscription.findOneAndUpdate(
+//         { razorpaySubId: s.id },
+//         {
+//           status: "active",
+//           startDate: new Date(s.current_start * 1000),
+//           endDate: new Date(s.current_end * 1000),
+//         }
+//       );
+    
+//       console.log("🔄 Subscription renewed – new expiry saved");
+//     }
+//   /* ====================================================
+//        🛑 3️⃣ SUBSCRIPTION EXPIRED
+//     ==================================================== */
+//     if (event.event === "subscription.completed") {
+//       const s = event.payload.subscription.entity;
+
+//       await Subscription.findOneAndUpdate(
+//         { razorpaySubId: s.id },
+//         {
+//           status: "expired",
+//           endDate: new Date(s.current_end * 1000),
+//         }
+//       );
+
+//       console.log("🛑 Subscription expired");
+//     }
+//  /* ====================================================
+//        ❌ 4️⃣ SUBSCRIPTION CANCELLED BY USER / MERCHANT
+//     ==================================================== */
+//     if (event.event === "subscription.cancelled") {
+//       const s = event.payload.subscription.entity;
+
+//       await Subscription.findOneAndUpdate(
+//         { razorpaySubId: s.id },
+//         {
+//           status: "cancelled",
+//           endDate: new Date(s.current_end * 1000),
+//         }
+//       );
+
+//       console.log("❌ Subscription cancelled");
+//     }
+
+//         /* ================================
+//            🎯 STEP-2 — INVOICE ONLY WHEN
+//            PAYMENT SUCCESS
+//         ==================================*/
+//         if (event.event === "payment.captured") {
+//           const p = event.payload.payment.entity;
+    
+//           console.log("💰 PAYMENT OBJECT ===>");
+//           console.log(p);
+//           const rzpInvoice = await razorpay.invoices.fetch(p.invoice_id);
+
+//           const subscriptionId = rzpInvoice.subscription_id;
+//           try {
+//             // prevent duplicates
+//             const already = await Invoice.findOne({ paymentId: p.id });
+//             if (already) {
+//               console.log("⚠ Invoice Already Exists — Skipping");
+//             } else {
+//               const invoice = await Invoice.create({
+//                 paymentId: p.id,
+//                 hotelId: p.notes?.hotelId || null,
+//                 subscriptionId:subscriptionId,
+//                 amount: p.amount / 100,
+//                 currency: p.currency,
+//                 date: new Date()
+//               });
+    
+//               console.log("🎉 Invoice Created ===>");
+//               console.log(invoice);
+//             }
+//           } catch (err) {
+//             console.log("❌ INVOICE SAVE ERROR ===>");
+//             console.log(err);
+//           }
+//         }
+    
+//         return res.json({ status: "ok" });
+    
+//       } catch (err) {
+//         console.log("💥 WEBHOOK ERROR ===>");
+//         console.log(err);
+//         return res.status(500).send("Webhook error");
+//       }
+//     };
+
+exports.webhookHandler = async (req, res) => {
+  try {
+    const signature = req.headers["x-razorpay-signature"];
+
+    const expected = crypto
+      // .createHmac("sha256", "MY_HOTEL_SECRET")
+    .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
+      .update(req.body)
+      .digest("hex");
+
+    if (signature !== expected) {
+      return res.status(400).send("Invalid signature");
+    }
+
+    const event = JSON.parse(req.body.toString());
+    const now = new Date();
+    const s = event.payload?.subscription?.entity;
+
+    if (!s) return res.json({ status: "ok" });
+
+    /* ===============================
+       🟢 1. FIRST PAYMENT / ACTIVATION
+    =============================== */
+    if (event.event === "subscription.activated") {
+
+      const existing = await Subscription.findOne({
+        razorpaySubId: s.id,
+        startDate: new Date(s.current_start * 1000),
+      });
+    
+      if (!existing) {
+        await Subscription.create({
+          hotelId: s.notes?.hotelId || null,
+          razorpaySubId: s.id,
+          planId: s.plan_id,
+          amount: s.notes?.amount || 0,
           status: "active",
           startDate: new Date(s.current_start * 1000),
           endDate: new Date(s.current_end * 1000),
-        }
-      );
-    
-      console.log("🔄 Subscription renewed – new expiry saved");
+        });
+      } else {
+        console.log("⚠️ Duplicate activation ignored");
+      }
     }
-  /* ====================================================
-       🛑 3️⃣ SUBSCRIPTION EXPIRED
-    ==================================================== */
-    if (event.event === "subscription.completed") {
-      const s = event.payload.subscription.entity;
 
-      await Subscription.findOneAndUpdate(
-        { razorpaySubId: s.id },
+    /* ===============================
+       🔁 2. AUTOPAY SUCCESS
+    =============================== */
+    if (event.event === "subscription.charged") {
+
+      // old active expire
+      await Subscription.updateMany(
+        {
+          razorpaySubId: s.id,
+          status: "active",
+        },
         {
           status: "expired",
-          endDate: new Date(s.current_end * 1000),
         }
       );
 
-      console.log("🛑 Subscription expired");
+      // new cycle create
+      await Subscription.create({
+        hotelId: s.notes?.hotelId || null,
+        razorpaySubId: s.id,
+        planId: s.plan_id,
+        amount: s.notes?.amount || 0,
+        status: "active",
+        startDate: new Date(s.current_start * 1000),
+        endDate: new Date(s.current_end * 1000),
+      });
     }
- /* ====================================================
-       ❌ 4️⃣ SUBSCRIPTION CANCELLED BY USER / MERCHANT
-    ==================================================== */
+
+    /* ===============================
+       ❌ 3. AUTOPAY CANCEL
+    =============================== */
     if (event.event === "subscription.cancelled") {
-      const s = event.payload.subscription.entity;
+      const endDate = new Date(s.current_end * 1000);
 
-      await Subscription.findOneAndUpdate(
-        { razorpaySubId: s.id },
-        {
-          status: "cancelled",
-          endDate: new Date(s.current_end * 1000),
-        }
-      );
-
-      console.log("❌ Subscription cancelled");
+      // only expire after actual end
+      if (endDate <= now) {
+        await Subscription.updateMany(
+          {
+            razorpaySubId: s.id,
+            status: "active",
+          },
+          {
+            status: "cancelled",
+          }
+        );
+      }
     }
 
-        /* ================================
-           🎯 STEP-2 — INVOICE ONLY WHEN
-           PAYMENT SUCCESS
-        ==================================*/
-        if (event.event === "payment.captured") {
-          const p = event.payload.payment.entity;
-    
-          console.log("💰 PAYMENT OBJECT ===>");
-          console.log(p);
-          const rzpInvoice = await razorpay.invoices.fetch(p.invoice_id);
+    /* ===============================
+       ⚠️ 4. PAYMENT FAILED
+    =============================== */
+    if (event.event === "subscription.halted") {
+      const endDate = new Date(s.current_end * 1000);
 
-          const subscriptionId = rzpInvoice.subscription_id;
-          try {
-            // prevent duplicates
-            const already = await Invoice.findOne({ paymentId: p.id });
-            if (already) {
-              console.log("⚠ Invoice Already Exists — Skipping");
-            } else {
-              const invoice = await Invoice.create({
-                paymentId: p.id,
-                hotelId: p.notes?.hotelId || null,
-                subscriptionId:subscriptionId,
-                amount: p.amount / 100,
-                currency: p.currency,
-                date: new Date()
-              });
-    
-              console.log("🎉 Invoice Created ===>");
-              console.log(invoice);
-            }
-          } catch (err) {
-            console.log("❌ INVOICE SAVE ERROR ===>");
-            console.log(err);
+      if (endDate <= now) {
+        await Subscription.updateMany(
+          {
+            razorpaySubId: s.id,
+            status: "active",
+          },
+          {
+            status: "expired",
           }
-        }
-    
-        return res.json({ status: "ok" });
-    
-      } catch (err) {
-        console.log("💥 WEBHOOK ERROR ===>");
-        console.log(err);
-        return res.status(500).send("Webhook error");
+        );
       }
-    };
+    }
+
+    return res.json({ status: "ok" });
+
+  } catch (err) {
+    console.log("Webhook Error:", err);
+    return res.status(500).send("Webhook error");
+  }
+};
      
     //razorpay real fetch sync subscription data 
     // (async () => {
@@ -3323,7 +3445,7 @@ if (Array.isArray(hotelObj.roomArray)) {
     exports.getExpiredSubscription = async (req, res) => {
       try{
      const hotelId=req.params.id
-     console.log('hotelid',hotelId)
+    //  console.log('hotelid',hotelId)
      const allSubscription=await Subscription.find({ hotelId: hotelId,status: "expired"})
      const formatDate = (date) => {
       const d = new Date(date);
@@ -3684,7 +3806,7 @@ if (Array.isArray(hotelObj.roomArray)) {
           if (!ownerKey) {
             return res.status(404).send({ mssg: "Owner not found" });
           }
-           console.log('owners key',ownerKey)
+          //  console.log('owners key',ownerKey)
           const imagePublicId = hotelObj[ownerKey].imagePublicId;
     
           if (imagePublicId) {
@@ -3829,7 +3951,7 @@ if (Array.isArray(hotelObj.roomArray)) {
           service: "gmail",
           auth: {
             user: "hoteloptix@gmail.com",
-            pass: "jbdt ytmn kjbz ipod", // yaha app password dalna
+            pass:process.env.password, // yaha app password dalna
           },
         });
     
@@ -3917,7 +4039,7 @@ if (Array.isArray(hotelObj.roomArray)) {
           service: "gmail",
           auth: {
             user: "hoteloptix@gmail.com",
-            pass: "jbdt ytmn kjbz ipod",
+            pass:process.env.password,
           },
         });
     

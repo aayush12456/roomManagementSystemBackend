@@ -43,6 +43,10 @@ const hotelSchema = mongoose.Schema({
           required: true,
           match: /^[0-9]{10}$/, // basic 10-digit phone validation
         },
+        email: {
+          type: String,
+          trim: true
+        },
         image: {
           type: String,
           required: true,
@@ -61,6 +65,10 @@ const hotelSchema = mongoose.Schema({
         phone: {
           type: String,
           match: /^[0-9]{10}$/, // basic 10-digit phone validation
+        },
+        email: {
+          type: String,
+          trim: true
         },
         image: {
           type: String,
@@ -83,6 +91,10 @@ const hotelSchema = mongoose.Schema({
         image: {
           type: String,
         },
+        email: {
+          type: String,
+          trim: true
+        },
         imagePublicId: { type: String }
       },
       owner4: {
@@ -97,6 +109,10 @@ const hotelSchema = mongoose.Schema({
         phone: {
           type: String,
           match: /^[0-9]{10}$/, // basic 10-digit phone validation
+        },
+        email: {
+          type: String,
+          trim: true
         },
         image: {
           type: String,
@@ -116,6 +132,7 @@ const hotelSchema = mongoose.Schema({
         type: String,
         required: true,
       },
+
       room: {
         type: Map,
         of: {
@@ -154,7 +171,7 @@ const hotelSchema = mongoose.Schema({
           totalCustomer: String,
           relation:String,
           customerIdProof: String,
-          customerAadharNumber:String,
+          customerIdDetails:String,
           customerCity: String,
           customerOccupation: String,
           customerDestination: String,
@@ -180,7 +197,8 @@ const hotelSchema = mongoose.Schema({
               customerName: String,
               customerAddress: String,
               customerPhoneNumber: String,
-              customerAadharNumber: String
+              customerIdProof: String,
+              customerIdDetails:String,
             }
           ]
           
@@ -199,7 +217,7 @@ const hotelSchema = mongoose.Schema({
           totalCustomer: String,
           relation:String,
           customerIdProof: String,
-          customerAadharNumber:String,
+          customerIdDetails:String,
           customerCity: String,
           customerOccupation: String,
           customerDestination: String,
@@ -226,7 +244,8 @@ const hotelSchema = mongoose.Schema({
               customerName: String,
               customerAddress: String,
               customerPhoneNumber: String,
-              customerAadharNumber: String
+              customerIdProof: String,
+              customerIdDetails:String,
             }
           ]
           
@@ -331,8 +350,10 @@ const hotelSchema = mongoose.Schema({
         plan: { type: String, default: "free" },   // free | monthly | yearly
         startDate: Date,
         endDate: Date
-      }
-      
+      },
+      registerDate: {
+     type: String
+}
       
       
 },
@@ -340,7 +361,7 @@ const hotelSchema = mongoose.Schema({
 )
 hotelSchema.methods.generateAuthToken = async function () {
   try {
-    console.log('toke data',this._id);
+    // console.log('toke data',this._id);
     // const token = jwt.sign(
     //   { _id: this._id.toString() },
     //   process.env.registerData,
