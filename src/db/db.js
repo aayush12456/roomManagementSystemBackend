@@ -10,7 +10,7 @@ dotenv.config()
 
 
 // MONGODB_CONNECT_URL yha mera production server ka url aayega jo ki .env me present hai
-mongoose.connect(process.env.url,{
+mongoose.connect(process.env.MONGODB_CONNECT_URL,{
     serverSelectionTimeoutMS: 5000, // Increase timeout
     ssl: true, // Enable SSL
     tlsAllowInvalidCertificates: true, 
