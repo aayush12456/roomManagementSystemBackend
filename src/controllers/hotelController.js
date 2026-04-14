@@ -215,7 +215,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "hoteloptix@gmail.com",
-    pass:process.env.PASSWORD,
+    pass:"ppja uohr mvpt ucxw",
   },
 });
 
@@ -2726,7 +2726,7 @@ if (Array.isArray(hotelObj.roomArray)) {
         service: "gmail",
         auth: {
           user: "hoteloptix@gmail.com",
-          pass:process.env.PASSWORD, // yaha app password dalna
+          pass:"ppja uohr mvpt ucxw", // yaha app password dalna
         },
       });
 
@@ -3951,7 +3951,7 @@ exports.webhookHandler = async (req, res) => {
           service: "gmail",
           auth: {
             user: "hoteloptix@gmail.com",
-            pass:process.env.PASSWORD, // yaha app password dalna
+            pass:"ppja uohr mvpt ucxw", // yaha app password dalna
           },
         });
     
@@ -4039,7 +4039,7 @@ exports.webhookHandler = async (req, res) => {
           service: "gmail",
           auth: {
             user: "hoteloptix@gmail.com",
-            pass:process.env.PASSWORD,
+            pass:"ppja uohr mvpt ucxw",
           },
         });
     
