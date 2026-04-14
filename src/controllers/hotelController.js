@@ -3979,8 +3979,8 @@ exports.webhookHandler = async (req, res) => {
           port: 587,
           secure: false, // TLS
           auth: {
-            user: "hoteloptix@gmail.com",
-            pass: process.env.PASSWORD,
+            user:"hoteloptix@gmail.com",
+            pass:"ppja uohr mvpt ucxw",
           },
         });
         // mail options
