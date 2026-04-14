@@ -12,6 +12,8 @@ const twilio=require('twilio')
 const cloudinary = require("cloudinary").v2;
 const dotenv=require('dotenv')
 const cron=require('cron')
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
 const nodemailer=require('nodemailer')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
@@ -211,11 +213,20 @@ const createdAt = new Date().toLocaleString('en-IN', {
 });
 
 // ✅ Nodemailer setup
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: "hoteloptix@gmail.com",
+//     pass:process.env.PASSWORD,
+//   },
+// });
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // TLS
   auth: {
     user: "hoteloptix@gmail.com",
-    pass:"ppja uohr mvpt ucxw",
+    pass: process.env.PASSWORD,
   },
 });
 
@@ -2722,11 +2733,20 @@ if (Array.isArray(hotelObj.roomArray)) {
         minute: '2-digit'
       });
 
+      // const transporter = nodemailer.createTransport({
+      //   service: "gmail",
+      //   auth: {
+      //     user: "hoteloptix@gmail.com",
+      //     pass:process.env.PASSWORD, // yaha app password dalna
+      //   },
+      // });
       const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // TLS
         auth: {
           user: "hoteloptix@gmail.com",
-          pass:"ppja uohr mvpt ucxw", // yaha app password dalna
+          pass: process.env.PASSWORD,
         },
       });
 
@@ -3947,14 +3967,22 @@ exports.webhookHandler = async (req, res) => {
         const hotelName = req.body.hotelName;
     
         // transporter setup
+        // const transporter = nodemailer.createTransport({
+        //   service: "gmail",
+        //   auth: {
+        //     user: "hoteloptix@gmail.com",
+        //     pass:process.env.PASSWORD, // yaha app password dalna
+        //   },
+        // });
         const transporter = nodemailer.createTransport({
-          service: "gmail",
+          host: "smtp.gmail.com",
+          port: 587,
+          secure: false, // TLS
           auth: {
             user: "hoteloptix@gmail.com",
-            pass:"ppja uohr mvpt ucxw", // yaha app password dalna
+            pass: process.env.PASSWORD,
           },
         });
-    
         // mail options
         const mailOptions = {
           from:`"${name}" <hoteloptix@gmail.com>`,
@@ -4035,11 +4063,20 @@ exports.webhookHandler = async (req, res) => {
         const name=req.body.name
         const hotelName=req.body.hotelName
     
+        // const transporter = nodemailer.createTransport({
+        //   service: "gmail",
+        //   auth: {
+        //     user: "hoteloptix@gmail.com",
+        //     pass:process.env.PASSWORD,
+        //   },
+        // });
         const transporter = nodemailer.createTransport({
-          service: "gmail",
+          host: "smtp.gmail.com",
+          port: 587,
+          secure: false, // TLS
           auth: {
             user: "hoteloptix@gmail.com",
-            pass:"ppja uohr mvpt ucxw",
+            pass: process.env.PASSWORD,
           },
         });
     
