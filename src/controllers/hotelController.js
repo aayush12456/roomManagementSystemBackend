@@ -5,7 +5,7 @@ const Access=require('../models/accessSchema')
 const Invoice=require("../models/invoiceSchema")
 const razorpay=require('../models/razorpay')
 const crypto = require("crypto");
-
+const Resend=require("resend").Resend
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken");
 const twilio=require('twilio')
@@ -17,7 +17,7 @@ dns.setDefaultResultOrder("ipv4first");
 const nodemailer=require('nodemailer')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
-
+const resend = new Resend(process.env.RESEND_API_KEY);
 cloudinary.config({ 
   cloud_name:process.env.CLOUD_NAME,
   api_key:process.env.API_KEY,
@@ -3966,88 +3966,74 @@ exports.webhookHandler = async (req, res) => {
         const message = req.body.message;
         const hotelName = req.body.hotelName;
     
-        // transporter setup
-        // const transporter = nodemailer.createTransport({
-        //   service: "gmail",
-        //   auth: {
-        //     user: "hoteloptix@gmail.com",
-        //     pass:process.env.PASSWORD, // yaha app password dalna
-        //   },
-        // });
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 587,
-          secure: false, // TLS
-          auth: {
-            user:"hoteloptix@gmail.com",
-            pass:"ppja uohr mvpt ucxw",
-          },
-        });
-        // mail options
-        const mailOptions = {
-          from:`"${name}" <hoteloptix@gmail.com>`,
-          to: "hoteloptix@gmail.com", // 👉 user ko mail jayega
+        // ❌ Nodemailer hata diya
+        // ✅ Resend use kar rahe
+    
+        const response = await resend.emails.send({
+          from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
+          to: "hoteloptix@gmail.com",
           subject: `New Contact Request from ${hotelName}`,
+    
           html: `
-    <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
-      
-      <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
-        
-        <!-- Header -->
-        <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
-          <h2 style="margin:0;">HotelOptix Support</h2>
-          <p style="margin:0; font-size:12px;">New Contact Request</p>
-        </div>
-
-        <!-- Body -->
-        <div style="padding:20px;">
+        <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
           
-          <p style="font-size:14px;">You have received a new contact request from your application:</p>
-
-          <table style="width:100%; border-collapse:collapse; font-size:14px;">
-            <tr>
-              <td style="padding:8px; font-weight:bold;">👤 Name:</td>
-              <td style="padding:8px;">${name}</td>
-            </tr>
-            <tr style="background:#f9fafb;">
-              <td style="padding:8px; font-weight:bold;">📧 Email:</td>
-              <td style="padding:8px;">${email}</td>
-            </tr>
-            <tr>
-              <td style="padding:8px; font-weight:bold;">📞 Phone:</td>
-              <td style="padding:8px;">${phone}</td>
-            </tr>
-            <tr style="background:#f9fafb;">
-              <td style="padding:8px; font-weight:bold;">🏨 Hotel:</td>
-              <td style="padding:8px;">${hotelName}</td>
-            </tr>
-          </table>
-
-          <!-- Message Box -->
-          <div style="margin-top:20px;">
-            <p style="font-weight:bold;">💬 Message:</p>
-            <div style="background:#f1f5f9; padding:15px; border-radius:8px;">
-              ${message}
+          <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
+              <h2 style="margin:0;">HotelOptix Support</h2>
+              <p style="margin:0; font-size:12px;">New Contact Request</p>
             </div>
+    
+            <!-- Body -->
+            <div style="padding:20px;">
+              
+              <p style="font-size:14px;">You have received a new contact request from your application:</p>
+    
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <tr>
+                  <td style="padding:8px; font-weight:bold;">👤 Name:</td>
+                  <td style="padding:8px;">${name}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:8px; font-weight:bold;">📧 Email:</td>
+                  <td style="padding:8px;">${email}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px; font-weight:bold;">📞 Phone:</td>
+                  <td style="padding:8px;">${phone}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:8px; font-weight:bold;">🏨 Hotel:</td>
+                  <td style="padding:8px;">${hotelName}</td>
+                </tr>
+              </table>
+    
+              <!-- Message Box -->
+              <div style="margin-top:20px;">
+                <p style="font-weight:bold;">💬 Message:</p>
+                <div style="background:#f1f5f9; padding:15px; border-radius:8px;">
+                  ${message}
+                </div>
+              </div>
+    
+            </div>
+    
+            <!-- Footer -->
+            <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
+              This email was sent from HotelOptix Contact Form
+            </div>
+    
           </div>
-
-        </div>
-
-        <!-- Footer -->
-        <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
-          This email was sent from HotelOptix Contact Form
-        </div>
-
-      </div>
-
-    </div>
-  `,
-        };
     
-        // send mail
-        await transporter.sendMail(mailOptions);
+        </div>
+        `,
+        });
     
-        res.status(200).send({ mssg: "Email sent successfully" });
+        res.status(200).send({
+          mssg: "Email sent successfully",
+          data: response,
+        });
     
       } catch (e) {
         console.error(e);
