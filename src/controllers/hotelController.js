@@ -2776,7 +2776,10 @@ if (Array.isArray(hotelObj.roomArray)) {
         </div>
         `
       });
-      
+      res.status(200).send({
+        mssg: "Hotel deleted successfully",
+        deletedImages: hotelObj
+      });
   
     } catch (e) {
       console.log(e);
