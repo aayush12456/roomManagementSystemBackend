@@ -14,7 +14,6 @@ const dotenv=require('dotenv')
 const cron=require('cron')
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
-const nodemailer=require('nodemailer')
 dotenv.config()
 const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -212,27 +211,8 @@ const createdAt = new Date().toLocaleString('en-IN', {
   minute: '2-digit'
 });
 
-// ✅ Nodemailer setup
-// const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: "hoteloptix@gmail.com",
-//     pass:process.env.PASSWORD,
-//   },
-// });
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // TLS
-  auth: {
-    user: "hoteloptix@gmail.com",
-    pass: process.env.PASSWORD,
-  },
-});
-
-// ✅ Mail Options
-const mailOptions = {
-  from: `"HotelOptix" <hoteloptix@gmail.com>`,
+await resend.emails.send({
+  from: "HotelOptix <onboarding@resend.dev>",
   to: "hoteloptix@gmail.com",
   subject: `✅ New Hotel Created - ${hotelData.hotelName}`,
 
@@ -269,7 +249,6 @@ const mailOptions = {
             <td style="padding:8px;">${req.body.hotelAddress}</td>
           </tr>
 
-
           <tr style="background:#f9fafb;">
             <td style="padding:8px; font-weight:bold;">⏰ Created At:</td>
             <td style="padding:8px;">${createdAt}</td>
@@ -287,14 +266,8 @@ const mailOptions = {
     </div>
 
   </div>
-  `
-};
-
-// ✅ Send Mail
-// await transporter.sendMail(mailOptions);
-transporter.sendMail(mailOptions)
-  .then(() => console.log("Mail sent"))
-  .catch(err => console.log("Mail error", err));
+  `,
+});
 
     // console.log('hotelData',hotelData)
     }catch (e) {
@@ -2733,106 +2706,77 @@ if (Array.isArray(hotelObj.roomArray)) {
         minute: '2-digit'
       });
 
-      // const transporter = nodemailer.createTransport({
-      //   service: "gmail",
-      //   auth: {
-      //     user: "hoteloptix@gmail.com",
-      //     pass:process.env.PASSWORD, // yaha app password dalna
-      //   },
-      // });
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false, // TLS
-        auth: {
-          user: "hoteloptix@gmail.com",
-          pass: process.env.PASSWORD,
-        },
-      });
-
-      const mailOptions = {
-        from:`"${name}" <hoteloptix@gmail.com>`,
-        to: "hoteloptix@gmail.com", // 👉 user ko mail jayega
+      await resend.emails.send({
+        from: "HotelOptix Support <onboarding@resend.dev>",
+        to: "hoteloptix@gmail.com",
         subject: `New Delete Request from ${hotelName}`,
+      
         html: `
-      <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
-        
-        <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+        <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
           
-          <!-- Header -->
-          <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
-            <h2 style="margin:0;">HotelOptix Support</h2>
-            <p style="margin:0; font-size:12px;">Hotel Deleted by owner</p>
-          </div>
-      
-          <!-- Alert Banner -->
-          <div style="background:#fee2e2; color:#991b1b; padding:15px; text-align:center; font-weight:bold;">
-            ⚠️ Hotel Deletion Alert!
-          </div>
-      
-          <!-- Body -->
-          <div style="padding:20px;">
+          <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
             
-            <p style="font-size:14px;">
-            A owner has deleted there hotel from the system
-            </p>
+            <div style="background:#0f172a; color:#ffffff; padding:15px; text-align:center;">
+              <h2 style="margin:0;">HotelOptix Support</h2>
+              <p style="margin:0; font-size:12px;">Hotel Deleted by owner</p>
+            </div>
       
-            <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;">
+            <div style="background:#fee2e2; color:#991b1b; padding:15px; text-align:center; font-weight:bold;">
+              ⚠️ Hotel Deletion Alert!
+            </div>
+      
+            <div style="padding:20px;">
               
-              <tr>
-                <td style="padding:10px; font-weight:bold;">👤 Owner Name:</td>
-                <td style="padding:10px;">${name}</td>
-              </tr>
+              <p style="font-size:14px;">
+              A owner has deleted there hotel from the system
+              </p>
       
-              <tr style="background:#f9fafb;">
-                <td style="padding:10px; font-weight:bold;">📧 Email:</td>
-                <td style="padding:10px;">${email}</td>
-              </tr>
+              <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;">
+                
+                <tr>
+                  <td style="padding:10px; font-weight:bold;">👤 Owner Name:</td>
+                  <td style="padding:10px;">${name}</td>
+                </tr>
       
-              <tr>
-                <td style="padding:10px; font-weight:bold;">📞 Phone:</td>
-                <td style="padding:10px;">${phone}</td>
-              </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px; font-weight:bold;">📧 Email:</td>
+                  <td style="padding:10px;">${email}</td>
+                </tr>
       
-              <tr style="background:#f9fafb;">
-                <td style="padding:10px; font-weight:bold;">🏨 Deleted Hotel:</td>
-                <td style="padding:10px;">${hotelName}</td>
-              </tr>
+                <tr>
+                  <td style="padding:10px; font-weight:bold;">📞 Phone:</td>
+                  <td style="padding:10px;">${phone}</td>
+                </tr>
       
-              <tr>
-                <td style="padding:10px; font-weight:bold;">📍 Location:</td>
-                <td style="padding:10px;">${hotelAddress || "N/A"}</td>
-              </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px; font-weight:bold;">🏨 Deleted Hotel:</td>
+                  <td style="padding:10px;">${hotelName}</td>
+                </tr>
       
-              <tr style="background:#f9fafb;">
-                <td style="padding:10px; font-weight:bold;">⏰ Deletion Time:</td>
-                <td style="padding:10px;">${deletedAt}</td>
-              </tr>
+                <tr>
+                  <td style="padding:10px; font-weight:bold;">📍 Location:</td>
+                  <td style="padding:10px;">${hotelAddress || "N/A"}</td>
+                </tr>
       
-            </table>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px; font-weight:bold;">⏰ Deletion Time:</td>
+                  <td style="padding:10px;">${deletedAt}</td>
+                </tr>
       
-            
+              </table>
       
-          </div>
+            </div>
       
-          <!-- Footer -->
-          <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
-            This is an automated alert from HotelOptix System.  
-            Please review this action if necessary.
+            <div style="background:#f1f5f9; padding:10px; text-align:center; font-size:12px; color:#555;">
+              This is an automated alert from HotelOptix System.
+            </div>
+      
           </div>
       
         </div>
-      
-      </div>
-      `
-          
-      }
-      
-      await transporter.sendMail(mailOptions);
-      res.status(200).send({
-        mssg: "Hotel deleted successfully",
-        deletedImages:hotelObj 
+        `
       });
+      
   
     } catch (e) {
       console.log(e);
@@ -4044,33 +3988,20 @@ exports.webhookHandler = async (req, res) => {
     exports.replyEmail = async (req, res) => {
       try {
         const Id = req.params.id;
-        const userEmail = req.body.email;   // 👈 jisko reply bhejna hai
+        const userEmail = req.body.email;   // 👈 user ko reply
         const replyMessage = req.body.message;
-        const name=req.body.name
-        const hotelName=req.body.hotelName
+        const name = req.body.name;
+        const hotelName = req.body.hotelName;
     
-        // const transporter = nodemailer.createTransport({
-        //   service: "gmail",
-        //   auth: {
-        //     user: "hoteloptix@gmail.com",
-        //     pass:process.env.PASSWORD,
-        //   },
-        // });
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 587,
-          secure: false, // TLS
-          auth: {
-            user: "hoteloptix@gmail.com",
-            pass: process.env.PASSWORD,
-          },
-        });
+        // ❌ Nodemailer removed
+        // ✅ Resend used
     
-        const mailOptions = {
-          from: "hoteloptix@gmail.com",
-          to: userEmail, // 👈 ab user ko mail jayega
+        const response = await resend.emails.send({
+          from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
+          to: userEmail,
           bcc: "hoteloptix@gmail.com",
           subject: "Reply from HotelOptix Support",
+    
           html: `
           <div style="font-family: Arial, sans-serif; background:#f3f4f6; padding:20px;">
             
@@ -4096,6 +4027,7 @@ exports.webhookHandler = async (req, res) => {
                 <p style="margin-top:20px;">Best regards,</p>
                 <p><b>HotelOptix Support Team</b></p>
               </div>
+    
               <!-- Footer -->
               <div style="text-align:center; padding:15px; font-size:12px; color:#6b7280;">
                 © 2026 HotelOptix. All rights reserved.
@@ -4104,12 +4036,13 @@ exports.webhookHandler = async (req, res) => {
             </div>
     
           </div>
-          `
-        };
+          `,
+        });
     
-        await transporter.sendMail(mailOptions);
-    
-        res.status(200).send({ mssg: "Reply sent successfully" });
+        res.status(200).send({
+          mssg: "Reply sent successfully",
+          data: response,
+        });
     
       } catch (e) {
         console.error(e);
