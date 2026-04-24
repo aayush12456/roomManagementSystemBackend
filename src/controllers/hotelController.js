@@ -3246,6 +3246,27 @@ if (Array.isArray(hotelObj.roomArray)) {
 //       }
 //     };
 
+const sendAutoPayOffEmail = async ({ email, endDate }) => {
+  await transporter.sendMail({
+    to: email,
+    subject: "Auto-renewal turned off (Your plan is still active)",
+    html: `
+      <p>Hi,</p>
+
+      <p>Your auto-renewal has been turned off successfully.</p>
+
+      <p>Your subscription is still active till <b>${endDate.toDateString()}</b>.</p>
+
+      <p>No refund is applicable as the current billing cycle is already in progress.</p>
+
+      <p>You can renew anytime after expiry.</p>
+
+      <br/>
+      <p>Thanks</p>
+    `,
+  });
+};
+
 exports.webhookHandler = async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
@@ -3323,19 +3344,31 @@ exports.webhookHandler = async (req, res) => {
        ❌ 3. AUTOPAY CANCEL
     =============================== */
     if (event.event === "subscription.cancelled") {
-      const endDate = new Date(s.current_end * 1000);
+      // const endDate = new Date(s.current_end * 1000);
 
-      // only expire after actual end
-      if (endDate <= now) {
-        await Subscription.updateMany(
-          {
-            razorpaySubId: s.id,
-            status: "active",
-          },
-          {
-            status: "cancelled",
-          }
-        );
+      // // only expire after actual end
+      // if (endDate <= now) {
+      //   await Subscription.updateMany(
+      //     {
+      //       razorpaySubId: s.id,
+      //       status: "active",
+      //     },
+      //     {
+      //       status: "cancelled",
+      //     }
+      //   );
+      // }
+      const sub = await Subscription.findOne({
+        razorpaySubId: s.id,
+        status: "active",
+      });
+    
+      if (sub) {
+        // ✅ yaha email bhejo
+        await sendAutoPayOffEmail({
+          email: s.customer_notify?.email || "user@email.com", // adjust based on your data
+          endDate: sub.endDate,
+        });
       }
     }
 
