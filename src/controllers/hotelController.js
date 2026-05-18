@@ -1,187 +1,200 @@
-const hotel=require('../models/hotelSchema')
+const hotel = require('../models/hotelSchema')
 const Notify = require("../models/notifySchema");
-const Subscription=require("../models/subscriptionSchema")
-const Access=require('../models/accessSchema')
-const Invoice=require("../models/invoiceSchema")
-const razorpay=require('../models/razorpay')
+const Subscription = require("../models/subscriptionSchema")
+const Access = require('../models/accessSchema')
+const Invoice = require("../models/invoiceSchema")
+const razorpay = require('../models/razorpay')
 const crypto = require("crypto");
-const Resend=require("resend").Resend
+const Resend = require("resend").Resend
 const mongoose = require('mongoose');
 const jwt = require("jsonwebtoken");
-const twilio=require('twilio')
+const twilio = require('twilio')
 const cloudinary = require("cloudinary").v2;
-const dotenv=require('dotenv')
-const cron=require('cron')
+const dotenv = require('dotenv')
+const cron = require('cron')
 const dns = require("dns");
+const nodemailer = require("nodemailer")
 dns.setDefaultResultOrder("ipv4first");
 dotenv.config()
-const client = twilio(process.env.TWILIO_SID,process.env.TWILIO_AUTH_TOKEN);
+const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 const resend = new Resend(process.env.RESEND_API_KEY);
-cloudinary.config({ 
-  cloud_name:process.env.CLOUD_NAME,
-  api_key:process.env.API_KEY,
-  api_secret:process.env.API_SECRET
- });
-  exports.hotelRegister = async (req, res) => {
-    // console.log('register data is',req.body)
-    let cloudImageUrls = []
-    let ownerImagePublicIds = [];
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET
+});
+const transporter = nodemailer.createTransport({
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
 
-    // let hotelImageUrls=[]
-    // let hotelImagePublicIds = [];
-    let hotelImageUrl = null;
-    let hotelImagePublicId = null;
+  auth: {
+    user:process.env.SMTP_USER,
+    pass:process.env.SMTP_PASS,
+  },
 
-    let staffImageUrls=[]
-    let staffImagePublicIds = [];
+});
+const sendOTP = async (email, otp, hotelName) => { try { const info = await transporter.sendMail({ from: `"HotelOptix" <${process.env.SENDER}>`, to: email, subject: `Your OTP for ${hotelName}`, html: ` <!DOCTYPE html> <html> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0"/> <title>OTP Verification</title> </head> <body style=" margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; "> <table width="100%" cellpadding="0" cellspacing="0"> <tr> <td align="center" style="padding:40px 15px;"> <table width="600" cellpadding="0" cellspacing="0" style=" background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.08); "> <!-- HEADER --> <tr> <td align="center" style=" background:#111827; padding:30px; color:white; "> <h1 style=" margin:0; font-size:28px; letter-spacing:1px; "> HotelOptix </h1> <p style=" margin-top:10px; font-size:14px; color:#d1d5db; "> Secure Login Verification </p> </td> </tr> <!-- BODY --> <tr> <td style="padding:40px 35px;"> <h2 style=" margin:0 0 20px; color:#111827; font-size:24px; "> OTP Verification </h2> <p style=" color:#4b5563; font-size:16px; line-height:26px; "> Hello, </p> <p style=" color:#4b5563; font-size:16px; line-height:26px; "> Your One-Time Password (OTP) for accessing <strong>${hotelName}</strong> on HotelOptix is: </p> <!-- OTP BOX --> <div style=" margin:35px 0; text-align:center; "> <div style=" display:inline-block; background:#f3f4f6; border:2px dashed #2563eb; padding:18px 40px; border-radius:12px; font-size:36px; letter-spacing:8px; font-weight:bold; color:#2563eb; "> ${otp} </div> </div> <p style=" color:#4b5563; font-size:15px; line-height:24px; "> This OTP is valid for <strong>5 minutes</strong>. </p> <p style=" color:#4b5563; font-size:15px; line-height:24px; "> Please do not share this OTP with anyone for security reasons. </p> <hr style=" border:none; border-top:1px solid #e5e7eb; margin:35px 0; "/> <p style=" color:#6b7280; font-size:13px; line-height:22px; "> If you did not request this OTP, please ignore this email. </p> </td> </tr> <!-- FOOTER --> <tr> <td align="center" style=" background:#f9fafb; padding:25px; font-size:13px; color:#6b7280; "> © ${new Date().getFullYear()} HotelOptix. All rights reserved. </td> </tr> </table> </td> </tr> </table> </body> </html> `, }); console.log("MAIL SENT:", info.messageId); } catch (error) { console.log(error); } };
+exports.hotelRegister = async (req, res) => {
+  // console.log('register data is',req.body)
+  let cloudImageUrls = []
+  let ownerImagePublicIds = [];
 
-    try{
-      if (req.files && req.files.ownerImages) {
-        for (const file of req.files.ownerImages) {
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: 'ownerImages'
-          });
-  
-          if (!result || !result.secure_url) {
-            throw new Error('Cloudinary image upload failed');
-          }
-  
-          cloudImageUrls.push(result.secure_url);
-          ownerImagePublicIds.push(result.public_id);
-        }
-      }
-      // if (req.files && req.files.hotelImages) {
-      //   for (const file of req.files.hotelImages) {
-      //     const result = await cloudinary.uploader.upload(file.path, {
-      //       folder: 'hotelImages'
-      //     });
-  
-      //     if (!result || !result.secure_url) {
-      //       throw new Error('Cloudinary image upload failed');
-      //     }
-  
-      //     hotelImageUrls.push(result.secure_url);
-      //     hotelImagePublicIds.push(result.public_id);
-      //   }
-      // }
-      if (req.files && req.files.hotelImage && req.files.hotelImage.length > 0) {
-        const file = req.files.hotelImage[0];
-      
+  // let hotelImageUrls=[]
+  // let hotelImagePublicIds = [];
+  let hotelImageUrl = null;
+  let hotelImagePublicId = null;
+
+  let staffImageUrls = []
+  let staffImagePublicIds = [];
+
+  try {
+    if (req.files && req.files.ownerImages) {
+      for (const file of req.files.ownerImages) {
         const result = await cloudinary.uploader.upload(file.path, {
-          folder: "hotelImages"
+          folder: 'ownerImages'
         });
-      
+
         if (!result || !result.secure_url) {
-          throw new Error("Cloudinary image upload failed");
+          throw new Error('Cloudinary image upload failed');
         }
-      
-        hotelImageUrl = result.secure_url;
-        hotelImagePublicId = result.public_id;
-      }
 
-      if (req.files && req.files.staffImages) {
-        for (const file of req.files.staffImages) {
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: 'staffImages'
-          });
-  
-          if (!result || !result.secure_url) {
-            throw new Error('Cloudinary image upload failed');
-          }
-  
-          staffImageUrls.push(result.secure_url);
-          staffImagePublicIds.push(result.public_id);
-        }
+        cloudImageUrls.push(result.secure_url);
+        ownerImagePublicIds.push(result.public_id);
       }
-      if (req.body.owner1) {
-        req.body.owner1 = typeof req.body.owner1 === 'string' ? JSON.parse(req.body.owner1) : req.body.owner1;
-        req.body.owner1.image = cloudImageUrls[0] || null;
-        req.body.owner1.imagePublicId=ownerImagePublicIds[0] || null
-      }
-      if (req.body.owner2) {
-        req.body.owner2 = typeof req.body.owner2 === 'string' ? JSON.parse(req.body.owner2) : req.body.owner2;
-        req.body.owner2.image = cloudImageUrls[1] || null;
-        req.body.owner2.imagePublicId=ownerImagePublicIds[1] || null
-      }
-      if (req.body.owner3) {
-        req.body.owner3 = typeof req.body.owner3 === 'string' ? JSON.parse(req.body.owner3) : req.body.owner3;
-        req.body.owner3.image = cloudImageUrls[2] || null;
-        req.body.owner3.imagePublicId=ownerImagePublicIds[2] || null
-      }
-      if (req.body.owner4) {
-        req.body.owner4 = typeof req.body.owner4 === 'string' ? JSON.parse(req.body.owner4) : req.body.owner4;
-        req.body.owner4.image = cloudImageUrls[3] || null;
-        req.body.owner4.imagePublicId=ownerImagePublicIds[3] || null
-      }
+    }
+    // if (req.files && req.files.hotelImages) {
+    //   for (const file of req.files.hotelImages) {
+    //     const result = await cloudinary.uploader.upload(file.path, {
+    //       folder: 'hotelImages'
+    //     });
 
-      const staffMap = new Map();
-  
-      Object.entries(req.body).forEach(([key, value]) => {
-        if (key.startsWith('staff')) {
-          let staffData = typeof value === 'string' ? JSON.parse(value) : value;
-          let staffIndex = parseInt(key.replace('staff', '')) - 1;
-  
-          if (!isNaN(staffIndex)) {
-            staffData.image = staffImageUrls[staffIndex] || null;
-            staffData.imagePublicId=staffImagePublicIds[staffIndex] || null
-          } else {
-            staffData.image = null;
-            staffData.imagePublicId=null
-          }
-  
-          staffMap.set(key, staffData);
-        }
-      });
-  
-      // Convert Map to plain object for MongoDB storage
-      const staffObject = {};
-      staffMap.forEach((value, key) => {
-        staffObject[key] = value;
+    //     if (!result || !result.secure_url) {
+    //       throw new Error('Cloudinary image upload failed');
+    //     }
+
+    //     hotelImageUrls.push(result.secure_url);
+    //     hotelImagePublicIds.push(result.public_id);
+    //   }
+    // }
+    if (req.files && req.files.hotelImage && req.files.hotelImage.length > 0) {
+      const file = req.files.hotelImage[0];
+
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: "hotelImages"
       });
 
-let roomObject = {};
+      if (!result || !result.secure_url) {
+        throw new Error("Cloudinary image upload failed");
+      }
 
-if (req.body.roomData) {
-  // Agar roomData string hai, toh use JSON me badal do
-  const roomData = typeof req.body.roomData === 'string' 
-    ? JSON.parse(req.body.roomData) 
-    : req.body.roomData;
-
-  // Har ek room ke liye loop chalao
-  for (let roomName in roomData) {
-    const roomDetails = roomData[roomName]; // Jaise: { roomType: 'Ac', bedType: 'Double Bed' }
-
-    // Room name se floor ka naam nikaalo
-    // "Ground Floor Room 1" → "Ground Floor"
-    const floorName = roomName.split(" Room")[0];
-
-    // Floor key banate hain (space hataake aur lowercase me)
-    // "Ground Floor" → "groundfloor"
-    const floorKey = floorName.toLowerCase().replace(/\s+/g, '');
-
-    // Agar floor key pe koi value nahi hai, toh ek khaali object banao
-    if (!roomObject[floorKey]) {
-      roomObject[floorKey] = {};
+      hotelImageUrl = result.secure_url;
+      hotelImagePublicId = result.public_id;
     }
 
-    // Ab us floor ke andar room ka data daal do
-    roomObject[floorKey][roomName] = roomDetails;
-  }
-}
+    if (req.files && req.files.staffImages) {
+      for (const file of req.files.staffImages) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'staffImages'
+        });
 
-const today = new Date();
+        if (!result || !result.secure_url) {
+          throw new Error('Cloudinary image upload failed');
+        }
 
-const formattedDate = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+        staffImageUrls.push(result.secure_url);
+        staffImagePublicIds.push(result.public_id);
+      }
+    }
+    if (req.body.owner1) {
+      req.body.owner1 = typeof req.body.owner1 === 'string' ? JSON.parse(req.body.owner1) : req.body.owner1;
+      req.body.owner1.image = cloudImageUrls[0] || null;
+      req.body.owner1.imagePublicId = ownerImagePublicIds[0] || null
+    }
+    if (req.body.owner2) {
+      req.body.owner2 = typeof req.body.owner2 === 'string' ? JSON.parse(req.body.owner2) : req.body.owner2;
+      req.body.owner2.image = cloudImageUrls[1] || null;
+      req.body.owner2.imagePublicId = ownerImagePublicIds[1] || null
+    }
+    if (req.body.owner3) {
+      req.body.owner3 = typeof req.body.owner3 === 'string' ? JSON.parse(req.body.owner3) : req.body.owner3;
+      req.body.owner3.image = cloudImageUrls[2] || null;
+      req.body.owner3.imagePublicId = ownerImagePublicIds[2] || null
+    }
+    if (req.body.owner4) {
+      req.body.owner4 = typeof req.body.owner4 === 'string' ? JSON.parse(req.body.owner4) : req.body.owner4;
+      req.body.owner4.image = cloudImageUrls[3] || null;
+      req.body.owner4.imagePublicId = ownerImagePublicIds[3] || null
+    }
 
-    const hotelData=new hotel({
-      hotelName:req.body.hotelName,
-      hotelAddress:req.body.hotelAddress,
-      hotelRegistrationNumber:req.body.hotelRegistrationNumber,
-      owner1:req.body.owner1,
-      owner2:req.body.owner2,
-      owner3:req.body.owner3,
-      owner4:req.body.owner4,
-      checkOutTime:req.body.checkOutTime,
+    const staffMap = new Map();
+
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (key.startsWith('staff')) {
+        let staffData = typeof value === 'string' ? JSON.parse(value) : value;
+        let staffIndex = parseInt(key.replace('staff', '')) - 1;
+
+        if (!isNaN(staffIndex)) {
+          staffData.image = staffImageUrls[staffIndex] || null;
+          staffData.imagePublicId = staffImagePublicIds[staffIndex] || null
+        } else {
+          staffData.image = null;
+          staffData.imagePublicId = null
+        }
+
+        staffMap.set(key, staffData);
+      }
+    });
+
+    // Convert Map to plain object for MongoDB storage
+    const staffObject = {};
+    staffMap.forEach((value, key) => {
+      staffObject[key] = value;
+    });
+
+    let roomObject = {};
+
+    if (req.body.roomData) {
+      // Agar roomData string hai, toh use JSON me badal do
+      const roomData = typeof req.body.roomData === 'string'
+        ? JSON.parse(req.body.roomData)
+        : req.body.roomData;
+
+      // Har ek room ke liye loop chalao
+      for (let roomName in roomData) {
+        const roomDetails = roomData[roomName]; // Jaise: { roomType: 'Ac', bedType: 'Double Bed' }
+
+        // Room name se floor ka naam nikaalo
+        // "Ground Floor Room 1" → "Ground Floor"
+        const floorName = roomName.split(" Room")[0];
+
+        // Floor key banate hain (space hataake aur lowercase me)
+        // "Ground Floor" → "groundfloor"
+        const floorKey = floorName.toLowerCase().replace(/\s+/g, '');
+
+        // Agar floor key pe koi value nahi hai, toh ek khaali object banao
+        if (!roomObject[floorKey]) {
+          roomObject[floorKey] = {};
+        }
+
+        // Ab us floor ke andar room ka data daal do
+        roomObject[floorKey][roomName] = roomDetails;
+      }
+    }
+
+    const today = new Date();
+
+    const formattedDate = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+
+    const hotelData = new hotel({
+      hotelName: req.body.hotelName,
+      hotelAddress: req.body.hotelAddress,
+      hotelRegistrationNumber: req.body.hotelRegistrationNumber,
+      owner1: req.body.owner1,
+      owner2: req.body.owner2,
+      owner3: req.body.owner3,
+      owner4: req.body.owner4,
+      checkOutTime: req.body.checkOutTime,
       // hotelImg1: hotelImageUrls[0] || null,
       // hotelImg1PublicId: hotelImagePublicIds[0] || null,
       // hotelImg2: hotelImageUrls[1] || null,
@@ -191,32 +204,32 @@ const formattedDate = `${String(today.getDate()).padStart(2, '0')}-${String(toda
       // hotelImg4: hotelImageUrls[3] || null,
       // hotelImg4PublicId: hotelImagePublicIds[4] || null,
       hotelImg: hotelImageUrl,
-hotelImgPublicId: hotelImagePublicId,
+      hotelImgPublicId: hotelImagePublicId,
 
       staff: staffObject,
-      totalRoom:req.body.totalRoom,
-      totalFloor:req.body.totalFloor,
-      room: roomObject, 
-      registerDate: formattedDate 
+      totalRoom: req.body.totalRoom,
+      totalFloor: req.body.totalFloor,
+      room: roomObject,
+      registerDate: formattedDate
     })
     await hotelData.save();
-    res.status(201).send({ mssg: 'Data registered Successfully',registerData:hotelData});
+    res.status(201).send({ mssg: 'Data registered Successfully', registerData: hotelData });
 
     // ✅ Create Time
-const createdAt = new Date().toLocaleString('en-IN', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit'
-});
+    const createdAt = new Date().toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-await resend.emails.send({
-  from: "HotelOptix <onboarding@resend.dev>",
-  to: "hoteloptix@gmail.com",
-  subject: `✅ New Hotel Created - ${hotelData.hotelName}`,
+    await resend.emails.send({
+      from: "HotelOptix <onboarding@resend.dev>",
+      to: "hoteloptix@gmail.com",
+      subject: `✅ New Hotel Created - ${hotelData.hotelName}`,
 
-  html: `
+      html: `
   <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
     
     <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
@@ -267,69 +280,343 @@ await resend.emails.send({
 
   </div>
   `,
-});
+    });
 
     // console.log('hotelData',hotelData)
-    }catch (e) {
-        console.error(e);
-        res.status(401).send({ mssg: 'Data does not added' });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'Data does not added' });
+  }
+};
+
+
+const sendCustomerEmail = async ({
+  customerEmail,
+  customerName,
+  hotelName,
+  roomNo,
+  checkOutDate,
+  personalCheckOutTime,
+  extraCustomerNames = "",
+  emailType = "checkin",
+}) => {
+
+  try {
+
+    // =========================
+    // COMMON MESSAGE
+    // =========================
+
+    let message = "";
+
+    // CHECK-IN MESSAGE
+    if (emailType === "checkin") {
+
+      message = `
+Dear ${customerName},
+
+Your check-in has been successfully completed.
+
+Room Details:
+• Room Number: ${roomNo}
+• Check-out Date: ${checkOutDate}
+• Check-out Time: ${personalCheckOutTime}
+
+${extraCustomerNames ? `Additional Guest(s): ${extraCustomerNames}` : ""}
+
+Thank you for choosing ${hotelName}.
+We wish you a pleasant and comfortable stay.
+      `;
     }
-  };
-  // exports.getHotelName = async (req, res) => {
-  //   try {
-  //     const phone = req.body.phone;
-  //     const allHotels = await hotel.find().lean();
-  
-  //     const matchedHotelNames = [];
-  
-  //     allHotels.forEach(hotel => {
-  //       let isMatched = false;
-  
-  //       // Check owner1
-  //       if (hotel.owner1 && hotel.owner1.phone === phone) {
-  //         isMatched = true;
-  //       }
-  
-  //       // Check owner2
-  //       if (hotel.owner2 && hotel.owner2.phone === phone) {
-  //         isMatched = true;
-  //       }
-  //       if (hotel.owner3 && hotel.owner3.phone === phone) {
-  //         isMatched = true;
-  //       }
-  //       if (hotel.owner3 && hotel.owner3.phone === phone) {
-  //         isMatched = true;
-  //       }
-  
-  //       // Check staff
-  //       if (hotel.staff) {
-  //         Object.values(hotel.staff).forEach(staffMember => {
-  //           if (staffMember.phone === phone) {
-  //             isMatched = true;
-  //           }
-  //         });
-  //       }
-  
-  //       if (isMatched) {
-  //         matchedHotelNames.push(hotel.hotelName || null); // null only if hotelName missing
 
-  //       }
-  //     });
+    // UPDATED MESSAGE
+    if (emailType === "updated") {
+
+      message = `
+Dear ${customerName},
+
+Your booking details have been updated successfully.
+
+Updated Room Details:
+• Room Number: ${roomNo}
+• Check-out Date: ${checkOutDate}
+• Check-out Time: ${personalCheckOutTime}
+
+${extraCustomerNames ? `Additional Guest(s): ${extraCustomerNames}` : ""}
+
+Thank you for choosing ${hotelName}.
+We look forward to serving you.
+      `;
+    }
+
+    if (emailType === "checkout") { message = ` Dear ${customerName}, Thank you for staying with us. We hope you enjoyed your stay. Your feedback is valuable to us, and we look forward to welcoming you again. ${hotelName} `; }
+    // =========================
+    // EMAIL SUBJECT
+    // =========================
+
+    if (emailType === "checkinadvance") {
+      message = ` Dear ${customerName}, 
+
+    Your booking at ${hotelName} is confirmed.
+
+    Room Details: 
+    •Room Number: ${roomNo} 
+    • Check-in: ${checkOutDate} 
+
+    Please carry Id proof(Aadhar Card,Pan Card,Passport..) at check-in. 
+
+    For any assistance, contact hotel. ${hotelName} `;
+    }
+
+    if (emailType === "checkoutadvance") 
+    { 
+    message = ` Dear ${customerName}, 
+
+    Your booking at ${hotelName} is cancelled. 
+    
+    Check-in Date: ${checkOutDate} If any refund is applicable, it will be processed as per the hotel’s cancellation policy. 
+    
+    ${hotelName} `; 
   
-  //     res.status(200).send({
-  //       mssg: 'get hotel name',
-  //       matchedNames: matchedHotelNames,
-  //     });
+  }
+
+    let subject = "";
+
+    if (emailType === "checkin") {
+      subject = `Check-In Confirmation | ${hotelName}`;
+    }
+
+    if (emailType === "updated") {
+      subject = `Booking Details Updated | ${hotelName}`;
+    }
+
+    if (emailType === "checkout") {
+      subject = `Thank You For Staying With Us | ${hotelName}`;
+    }
+    else if (emailType === "checkinadvance") { subject = `Booking Confirmation | ${hotelName}`; }
+
   
-  //   } catch (e) {
-  //     console.error(e);
-  //     res.status(401).send({ mssg: 'login failed' });
-  //   }
-  // };
+else if (emailType === "checkoutadvance") {
+
+  subject = `Booking Cancelled | ${hotelName}`;
+
+}
 
 
-  const generateRandomCode = () => {
-    return Math.floor(10000 + Math.random() * 90000).toString();
+    // =========================
+    // SEND EMAIL
+    // =========================
+
+    const info = await transporter.sendMail({
+
+      from: `"HotelOptix" <${process.env.SENDER}>`,
+
+      to: customerEmail,
+
+      subject,
+
+      html: `
+      <!DOCTYPE html>
+      <html>
+
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>${subject}</title>
+      </head>
+
+      <body
+        style="
+          margin:0;
+          padding:0;
+          background-color:#f4f6f8;
+          font-family:Arial, Helvetica, sans-serif;
+        "
+      >
+
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center" style="padding:40px 15px;">
+
+            <table
+              width="600"
+              cellpadding="0"
+              cellspacing="0"
+              style="
+                background:#ffffff;
+                border-radius:12px;
+                overflow:hidden;
+                box-shadow:0 4px 15px rgba(0,0,0,0.08);
+              "
+            >
+
+              <!-- HEADER -->
+              <tr>
+                <td
+                  align="center"
+                  style="
+                    background:#111827;
+                    padding:30px;
+                    color:white;
+                  "
+                >
+
+                  <h1
+                    style="
+                      margin:0;
+                      font-size:28px;
+                      letter-spacing:1px;
+                    "
+                  >
+                    HotelOptix
+                  </h1>
+
+                  <p
+                    style="
+                      margin-top:10px;
+                      font-size:14px;
+                      color:#d1d5db;
+                    "
+                  >
+                    ${subject}
+                  </p>
+
+                </td>
+              </tr>
+
+              <!-- BODY -->
+              <tr>
+                <td style="padding:40px 35px;">
+
+                  <p
+                    style="
+                      color:#4b5563;
+                      font-size:16px;
+                      line-height:30px;
+                      white-space:pre-line;
+                      margin:0;
+                    "
+                  >
+                    ${message}
+                  </p>
+
+                  <hr
+                    style="
+                      border:none;
+                      border-top:1px solid #e5e7eb;
+                      margin:35px 0;
+                    "
+                  />
+
+                  <p
+                    style="
+                      color:#6b7280;
+                      font-size:13px;
+                      line-height:22px;
+                    "
+                  >
+                    This is an automated email from HotelOptix.
+                  </p>
+
+                </td>
+              </tr>
+
+              <!-- FOOTER -->
+              <tr>
+                <td
+                  align="center"
+                  style="
+                    background:#f9fafb;
+                    padding:25px;
+                    font-size:13px;
+                    color:#6b7280;
+                  "
+                >
+                  © ${new Date().getFullYear()} HotelOptix.
+                  All rights reserved.
+                </td>
+              </tr>
+
+            </table>
+
+          </td>
+        </tr>
+      </table>
+
+      </body>
+      </html>
+      `,
+    });
+
+    console.log("✅ Customer email sent:", info.messageId);
+
+  } catch (error) {
+
+    console.log("❌ Customer email failed:", error);
+
+  }
+};
+
+
+
+
+
+
+// exports.getHotelName = async (req, res) => {
+//   try {
+//     const phone = req.body.phone;
+//     const allHotels = await hotel.find().lean();
+
+//     const matchedHotelNames = [];
+
+//     allHotels.forEach(hotel => {
+//       let isMatched = false;
+
+//       // Check owner1
+//       if (hotel.owner1 && hotel.owner1.phone === phone) {
+//         isMatched = true;
+//       }
+
+//       // Check owner2
+//       if (hotel.owner2 && hotel.owner2.phone === phone) {
+//         isMatched = true;
+//       }
+//       if (hotel.owner3 && hotel.owner3.phone === phone) {
+//         isMatched = true;
+//       }
+//       if (hotel.owner3 && hotel.owner3.phone === phone) {
+//         isMatched = true;
+//       }
+
+//       // Check staff
+//       if (hotel.staff) {
+//         Object.values(hotel.staff).forEach(staffMember => {
+//           if (staffMember.phone === phone) {
+//             isMatched = true;
+//           }
+//         });
+//       }
+
+//       if (isMatched) {
+//         matchedHotelNames.push(hotel.hotelName || null); // null only if hotelName missing
+
+//       }
+//     });
+
+//     res.status(200).send({
+//       mssg: 'get hotel name',
+//       matchedNames: matchedHotelNames,
+//     });
+
+//   } catch (e) {
+//     console.error(e);
+//     res.status(401).send({ mssg: 'login failed' });
+//   }
+// };
+
+
+const generateRandomCode = () => {
+  return Math.floor(10000 + Math.random() * 90000).toString();
 };
 
 exports.getHotelName = async (req, res) => {
@@ -361,7 +648,7 @@ exports.getHotelName = async (req, res) => {
         matchedHotelNames.push({
           hotelName: hotel.hotelName || null,
           hotelId: hotel._id.toString(),
-          hotelImg:hotel.hotelImg
+          hotelImg: hotel.hotelImg
         });
       }
     });
@@ -377,50 +664,135 @@ exports.getHotelName = async (req, res) => {
   }
 };
 
-exports.getOtp=async(req,res)=>{
-try{
-const phone=req.body.phone
+// exports.getOtp=async(req,res)=>{
+// try{
+// const phone=req.body.phone
 // console.log('phone in otp',phone)
-const randomCode = generateRandomCode();
-let message =  `Your Login OTP is ${randomCode}`;
-// try {
-//   // Attempt to send OTP via Twilio
-//   await client.messages.create({
-//     body: message,
-//     // from: '+12185304074',d86901110@gmail.com twillo number
-//     from: '+15107377816', // Your Twilio phone number
-//     to: '+91' +phone.toString(), // User's phone number
-//   });
-//   console.log('OTP sent via Twilio');
-// } catch (twilioError) {
-//   console.error('Twilio failed, attempting to send via email:', twilioError);
+// const randomCode = generateRandomCode();
+// let message =  `Your Login OTP is ${randomCode}`;
+
+
+// // try {
+// //   // Attempt to send OTP via Twilio
+// //   await client.messages.create({
+// //     body: message,
+// //     // from: '+12185304074',d86901110@gmail.com twillo number
+// //     from: '+15107377816', // Your Twilio phone number
+// //     to: '+91' +phone.toString(), // User's phone number
+// //   });
+// //   console.log('OTP sent via Twilio');
+// // } catch (twilioError) {
+// //   console.error('Twilio failed, attempting to send via email:', twilioError);
+// // }
+
+// //whats App
+// // try {
+// //   // Attempt to send OTP via Twilio
+// //   await client.messages.create({
+// //     body: message,
+// //     // from: '+12185304074',d86901110@gmail.com twillo number
+// //     from: 'whatsapp:+14155238886', // Your Twilio phone number
+// //     to: 'whatsapp:+91' +phone.toString(), // User's phone number
+// //   });
+// //   console.log('OTP sent via Twilio');
+// // } catch (twilioError) {
+// //   console.error('Twilio failed, attempting to send via email:', twilioError);
+// // }
+
+
+// res.status(201).send({
+//   mssg: 'otp send Successfully',
+//   otp: randomCode,
+//   phoneNumber:phone,
+// });
+// }catch(e){
+//   console.error(e);
+//   res.status(401).send({ mssg: 'otp send failed' });
 // }
+//   }
 
-//whats App
-// try {
-//   // Attempt to send OTP via Twilio
-//   await client.messages.create({
-//     body: message,
-//     // from: '+12185304074',d86901110@gmail.com twillo number
-//     from: 'whatsapp:+14155238886', // Your Twilio phone number
-//     to: 'whatsapp:+91' +phone.toString(), // User's phone number
-//   });
-//   console.log('OTP sent via Twilio');
-// } catch (twilioError) {
-//   console.error('Twilio failed, attempting to send via email:', twilioError);
-// }
+exports.getOtp = async (req, res) => {
+  try {
+    const phone = req.body.phone;
+    console.log("phone in otp", phone);
 
+    const randomCode = generateRandomCode();
+    let message = `Your Login OTP is ${randomCode}`;
 
-res.status(201).send({
-  mssg: 'otp send Successfully',
-  otp: randomCode,
-  phoneNumber:phone,
-});
-}catch(e){
-  console.error(e);
-  res.status(401).send({ mssg: 'otp send failed' });
-}
+    const hotelId = req.body.id;
+
+    const hotelObj = await hotel.findById(hotelId);
+
+    console.log("hotelObj", hotelObj);
+
+    let matchedEmail = null;
+    const hotelName = hotelObj.hotelName
+
+    // =========================
+    // CHECK OWNERS
+    // =========================
+
+    for (let i = 1; i <= 4; i++) {
+      const owner = hotelObj[`owner${i}`];
+
+      if (
+        owner &&
+        owner.phone &&
+        owner.phone.toString() === phone.toString()
+      ) {
+        matchedEmail = owner.email;
+        break;
+      }
+    }
+
+    // =========================
+    // CHECK STAFF
+    // =========================
+
+    if (!matchedEmail && hotelObj.staff) {
+      for (const [key, staffMember] of hotelObj.staff.entries()) {
+        if (
+          staffMember.phone &&
+          staffMember.phone.toString() === phone.toString()
+        ) {
+          matchedEmail = staffMember.email;
+          break;
+        }
+      }
+    }
+
+    // =========================
+    // EMAIL NOT FOUND
+    // =========================
+
+    if (!matchedEmail) {
+      return res.status(404).send({
+        mssg: "Phone number not found",
+      });
+    }
+
+    console.log("matchedEmail", matchedEmail);
+
+    // =========================
+    // SEND OTP
+    // =========================
+
+    await sendOTP(matchedEmail, randomCode, hotelName);
+
+    res.status(201).send({
+      mssg: "otp send Successfully",
+      otp: randomCode,
+      phoneNumber: phone,
+      email: matchedEmail,
+    });
+  } catch (e) {
+    console.error(e);
+
+    res.status(401).send({
+      mssg: "OTP send failed",
+    });
   }
+};
 
 // exports.compareOtp=async(req,res)=>{
 // try{
@@ -665,26 +1037,28 @@ exports.compareOtp = async (req, res) => {
   }
 };
 
-exports.switchProfile=async(req,res)=>{
-try{
-const phone=req.body.phone
-const hotelId=req.body.hotelId
-const hotelName=req.body.hotelName
-const profileName=req.body.profileName
-const profileImage=req.body.profileImage
-const hotelObj=await hotel.findById(hotelId)
-const token = await hotelObj.generateAuthToken();
-res.status(200).send({mssg:'fetch data',matchedHotels:[hotelObj],token:token,phone:phone,
-name:profileName,image:profileImage})
+exports.switchProfile = async (req, res) => {
+  try {
+    const phone = req.body.phone
+    const hotelId = req.body.hotelId
+    const hotelName = req.body.hotelName
+    const profileName = req.body.profileName
+    const profileImage = req.body.profileImage
+    const hotelObj = await hotel.findById(hotelId)
+    const token = await hotelObj.generateAuthToken();
+    res.status(200).send({
+      mssg: 'fetch data', matchedHotels: [hotelObj], token: token, phone: phone,
+      name: profileName, image: profileImage
+    })
 
-}
-catch(e){
-  console.error("CompareOtp error:", e);
+  }
+  catch (e) {
+    console.error("CompareOtp error:", e);
     res.status(500).send({
       mssg: "Comparison failed",
       error: e.message,
     });
-}
+  }
 }
 
 exports.deleteSwitchProfile = async (req, res) => {
@@ -732,7 +1106,7 @@ exports.deleteSwitchProfile = async (req, res) => {
     return res.status(200).send({
       mssg: "Profile deleted successfully",
       hotelArray: updatedHotel.profileArray,
-      deleteId:deletedObj._id
+      deleteId: deletedObj._id
       // anotherHotelObj: updatedAnotherHotel,
     });
 
@@ -745,55 +1119,56 @@ exports.deleteSwitchProfile = async (req, res) => {
   }
 };
 
-exports.getRoomDetails=async(req,res)=>{
-try{
-const id=req.params.id
-// console.log('id is',id)
-const hotelObj=await hotel.findOne({_id:id})
-res.status(200).send({mssg:'fetch data',hotelObj:hotelObj})
+exports.getRoomDetails = async (req, res) => {
+  try {
+    const id = req.params.id
+    // console.log('id is',id)
+    const hotelObj = await hotel.findOne({ _id: id })
+    res.status(200).send({ mssg: 'fetch data', hotelObj: hotelObj })
+  }
+
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'comparison failed' });
+  }
 }
 
-catch(e){
-  console.error(e);
-  res.status(401).send({ mssg: 'comparison failed' });
-}
-}
-
-exports.addCustomerDetails=async(req,res)=>{
+exports.addCustomerDetails = async (req, res) => {
   // console.log('req in custm',req.body)
-try{
-const hotelId=req.params.id  
-const roomId=req.body.roomId
-const roomType=req.body.roomType
-const floor=req.body.floor
-const roomNo=req.body.roomNo
-const currentDate=req.body.currentDate
-const customerName=req.body.customerName
-const customerAddress=req.body.customerAddress
-const customerPhoneNumber=req.body.customerPhoneNumber
-const totalCustomer=req.body.totalCustomer
-const relation=req.body.relation
-const customerIdProof=req.body.customerIdProof
-const customerIdDetails=req.body.customerIdDetails
-const customerCity=req.body.customerCity
-const customerOccupation=req.body.customerOccupation
-const customerDestination=req.body.customerDestination
-const reasonToStay=req.body.reasonToStay
-const checkInDate=req.body.checkInDate
-const checkInTime=req.body.checkInTime
-const checkOutDate=req.body.checkOutDate
-const personalCheckOutTime=req.body.personalCheckOutTime
-const checkOutTime=req.body.checkOutTime
-const totalPayment=req.body.totalPayment
-const paymentPaid=req.body.paymentPaid
-const paymentDue=req.body.paymentDue
-const frontDeskExecutiveName=req.body.frontDeskExecutiveName
-const customerSignature=req.body.customerSignature
-const extraCustomers = req.body.extraCustomers; // ✅ array aayega frontend se
+  try {
+    const hotelId = req.params.id
+    const roomId = req.body.roomId
+    const roomType = req.body.roomType
+    const floor = req.body.floor
+    const roomNo = req.body.roomNo
+    const currentDate = req.body.currentDate
+    const customerName = req.body.customerName
+    const customerAddress = req.body.customerAddress
+    const customerPhoneNumber = req.body.customerPhoneNumber
+    const customerEmail = req.body.customerEmail
+    const totalCustomer = req.body.totalCustomer
+    const relation = req.body.relation
+    const customerIdProof = req.body.customerIdProof
+    const customerIdDetails = req.body.customerIdDetails
+    const customerCity = req.body.customerCity
+    const customerOccupation = req.body.customerOccupation
+    const customerDestination = req.body.customerDestination
+    const reasonToStay = req.body.reasonToStay
+    const checkInDate = req.body.checkInDate
+    const checkInTime = req.body.checkInTime
+    const checkOutDate = req.body.checkOutDate
+    const personalCheckOutTime = req.body.personalCheckOutTime
+    const checkOutTime = req.body.checkOutTime
+    const totalPayment = req.body.totalPayment
+    const paymentPaid = req.body.paymentPaid
+    const paymentDue = req.body.paymentDue
+    const frontDeskExecutiveName = req.body.frontDeskExecutiveName
+    const customerSignature = req.body.customerSignature
+    const extraCustomers = req.body.extraCustomers; // ✅ array aayega frontend se
 
 
-let signatureUrl = "";
-let imagePublicId = null;
+    let signatureUrl = "";
+    let imagePublicId = null;
     if (customerSignature) {
       const uploadResponse = await cloudinary.uploader.upload(customerSignature, {
         folder: "customer_signatures",
@@ -803,82 +1178,96 @@ let imagePublicId = null;
       imagePublicId = uploadResponse.public_id;
     }
 
-// console.log('customer signature',customerSignature)
-// console.log('customer signature url',signatureUrl)
-const hotelDetails=await hotel.findOne({_id:hotelId})
+    // console.log('customer signature',customerSignature)
+    // console.log('customer signature url',signatureUrl)
+    const hotelDetails = await hotel.findOne({ _id: hotelId })
 
-hotelDetails.roomArray.push(
-{roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-totalCustomer:totalCustomer, relation:relation ,customerIdProof:customerIdProof,customerIdDetails:customerIdDetails, customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
-checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
-totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
-})
+    hotelDetails.roomArray.push(
+      {
+        roomId: roomId, roomType: roomType, currentDate: currentDate, floor: floor, roomNo: roomNo, customerName: customerName, customerAddress: customerAddress, customerPhoneNumber: customerPhoneNumber,
+        customerEmail: customerEmail, totalCustomer: totalCustomer, relation: relation, customerIdProof: customerIdProof, customerIdDetails: customerIdDetails, customerCity: customerCity, customerOccupation: customerOccupation, customerDestination: customerDestination, reasonToStay: reasonToStay,
+        checkInDate: checkInDate, checkInTime: checkInTime, checkOutDate: checkOutDate, personalCheckOutTime: personalCheckOutTime, checkOutTime: checkOutTime,
+        totalPayment: totalPayment, paymentPaid: paymentPaid, paymentDue: paymentDue, frontDeskExecutiveName: frontDeskExecutiveName,
+        customerSignature: signatureUrl, imagePublicId: imagePublicId, extraCustomers: extraCustomers
+      })
 
-hotelDetails.reportArray.push(
-  {roomId:roomId,roomType:roomType,currentDate:currentDate,floor:floor,roomNo:roomNo, customerName:customerName,customerAddress:customerAddress,customerPhoneNumber:customerPhoneNumber,
-  totalCustomer:totalCustomer, relation:relation, customerIdProof:customerIdProof,customerIdDetails:customerIdDetails,customerCity:customerCity,customerOccupation:customerOccupation,customerDestination:customerDestination,reasonToStay:reasonToStay,
-  checkInDate:checkInDate,checkInTime:checkInTime,checkOutDate:checkOutDate,personalCheckOutTime:personalCheckOutTime,checkOutTime:checkOutTime,
-  totalPayment:totalPayment,paymentPaid:paymentPaid,paymentDue:paymentDue,frontDeskExecutiveName:frontDeskExecutiveName,
-  customerSignature: signatureUrl,imagePublicId:imagePublicId, extraCustomers: extraCustomers
-  })
+    hotelDetails.reportArray.push(
+      {
+        roomId: roomId, roomType: roomType, currentDate: currentDate, floor: floor, roomNo: roomNo, customerName: customerName, customerAddress: customerAddress, customerPhoneNumber: customerPhoneNumber,
+        totalCustomer: totalCustomer, relation: relation, customerIdProof: customerIdProof, customerIdDetails: customerIdDetails, customerCity: customerCity, customerOccupation: customerOccupation, customerDestination: customerDestination, reasonToStay: reasonToStay,
+        checkInDate: checkInDate, checkInTime: checkInTime, checkOutDate: checkOutDate, personalCheckOutTime: personalCheckOutTime, checkOutTime: checkOutTime,
+        totalPayment: totalPayment, paymentPaid: paymentPaid, paymentDue: paymentDue, frontDeskExecutiveName: frontDeskExecutiveName,
+        customerSignature: signatureUrl, imagePublicId: imagePublicId, extraCustomers: extraCustomers
+      })
 
-  let extraCustomerNames = "";
+    let extraCustomerNames = "";
 
-  if (Array.isArray(extraCustomers) && extraCustomers.length > 0) {
-    extraCustomerNames = extraCustomers
-      .map(cust => cust.customerName)
-      .join(", ");
+    if (Array.isArray(extraCustomers) && extraCustomers.length > 0) {
+      extraCustomerNames = extraCustomers
+        .map(cust => cust.customerName)
+        .join(", ");
+    }
+
+    // const message = `Dear ${customerName},
+
+    // Your check-in has been successfully completed.
+
+    // Room Details:
+    // • Room Number: ${roomNo}
+    // • Check-out Date: ${checkOutDate}
+    // • Check-out Time: ${personalCheckOutTime}
+
+    // ${extraCustomerNames ? `Additional Guest(s): ${extraCustomerNames}\n` : ""}
+
+    // Thank you for choosing ${hotelDetails?.hotelName}.
+    // We wish you a pleasant and comfortable stay.`;
+
+    // try {
+    //   await client.messages.create({
+    //     body: message,
+    //     from: "whatsapp:+14155238886", // Twilio Sandbox
+    //     to: "whatsapp:+91" + customerPhoneNumber,
+    //   });
+
+    //   console.log(
+    //     `✅ Checkout reminder sent to ${room.customerName} (${customerPhoneNumber})`
+    //   );
+    // } catch (err) {
+    //   console.error(
+    //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+    //     err.message
+    //   );
+    // }
+    const data = await hotelDetails.save()
+    await sendCustomerEmail({
+      customerEmail,
+      customerName,
+      hotelName: hotelDetails?.hotelName,
+      roomNo,
+      roomType,
+      checkInDate,
+      checkOutDate,
+      personalCheckOutTime,
+      extraCustomerNames,
+      emailType: "checkin",
+    });
+    // console.log('data us',data)
+    res.status(200).send({ mssg: 'add customers', getCustomerDetailsArray: hotelDetails.roomArray, reportArray: hotelDetails.reportArray })
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'customer addition failed' });
   }
-  
-  // const message = `Dear ${customerName},
-
-  // Your check-in has been successfully completed.
-  
-  // Room Details:
-  // • Room Number: ${roomNo}
-  // • Check-out Date: ${checkOutDate}
-  // • Check-out Time: ${personalCheckOutTime}
-  
-  // ${extraCustomerNames ? `Additional Guest(s): ${extraCustomerNames}\n` : ""}
-  
-  // Thank you for choosing ${hotelDetails?.hotelName}.
-  // We wish you a pleasant and comfortable stay.`;
-  
-  // try {
-  //   await client.messages.create({
-  //     body: message,
-  //     from: "whatsapp:+14155238886", // Twilio Sandbox
-  //     to: "whatsapp:+91" + customerPhoneNumber,
-  //   });
-
-  //   console.log(
-  //     `✅ Checkout reminder sent to ${room.customerName} (${customerPhoneNumber})`
-  //   );
-  // } catch (err) {
-  //   console.error(
-  //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
-  //     err.message
-  //   );
-  // }
-const data=await hotelDetails.save()
-// console.log('data us',data)
-res.status(200).send({mssg:'add customers',getCustomerDetailsArray:hotelDetails.roomArray,reportArray:hotelDetails.reportArray})
-}catch(e){
-  console.error(e);
-  res.status(401).send({ mssg: 'customer addition failed' });
-}
 }
 
-exports.getCustomerDetails=async(req,res)=>{
-try{
-const hotelId=req.params.id
-const getCustomerDetails=await hotel.findOne({_id:hotelId})
-res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray,reportArray:getCustomerDetails.reportArray})
-}catch(e){
-  console.error(e);
-  res.status(401).send({ mssg: 'get customer details failed' });
-}
+exports.getCustomerDetails = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const getCustomerDetails = await hotel.findOne({ _id: hotelId })
+    res.status(200).send({ mssg: 'get customers', getCustomerDetailsArray: getCustomerDetails.roomArray, reportArray: getCustomerDetails.reportArray })
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get customer details failed' });
+  }
 }
 
 // exports.deleteCustomerDetails = async (req, res) => {
@@ -950,13 +1339,32 @@ exports.deleteCustomerDetails = async (req, res) => {
     //       from: "whatsapp:+14155238886", // Twilio Sandbox
     //       to: "whatsapp:+91" + customerData.customerPhoneNumber,
     //     });
-      
+
     //   } catch (err) {
     //     console.error(
     //       `❌ WhatsApp failed for ${customerData.customerPhoneNumber}`,
     //       err.message
     //     );
     //   }
+
+    await sendCustomerEmail({
+
+      customerEmail: customerData.customerEmail,
+
+      customerName: customerData.customerName,
+
+      hotelName: hotelObj.hotelName,
+
+      roomNo: customerData.roomNo,
+
+      checkOutDate: customerData.checkOutDate,
+
+      personalCheckOutTime: customerData.personalCheckOutTime,
+
+      emailType: "checkout",
+
+    });
+
 
     return res.status(200).send({
       mssg: "Customer details deleted successfully",
@@ -1060,24 +1468,25 @@ exports.updateCustomerDetails = async (req, res) => {
           customerName: req.body.customerName,
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
+          customerEmail: req.body.customerEmail,
           totalCustomer: req.body.totalCustomer,
-          relation:req.body.relation,
+          relation: req.body.relation,
           customerIdProof: req.body.customerIdProof,
-          customerIdDetails:req.body.customerIdDetails,
+          customerIdDetails: req.body.customerIdDetails,
           customerCity: req.body.customerCity,
-          customerOccupation:req.body.customerOccupation,
-          customerDestination:req.body.customerDestination,
-           reasonToStay:req.body.reasonToStay,
+          customerOccupation: req.body.customerOccupation,
+          customerDestination: req.body.customerDestination,
+          reasonToStay: req.body.reasonToStay,
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
-          personalCheckOutTime:req.body.personalCheckOutTime,
+          personalCheckOutTime: req.body.personalCheckOutTime,
           checkOutTime: req.body.checkOutTime,
           totalPayment: req.body.totalPayment,
           paymentPaid: req.body.paymentPaid,
           paymentDue: req.body.paymentDue,
           frontDeskExecutiveName: req.body.frontDeskExecutiveName,
-          extraCustomers:req.body.extraCustomers
+          extraCustomers: req.body.extraCustomers
         });
       }
     });
@@ -1090,28 +1499,54 @@ exports.updateCustomerDetails = async (req, res) => {
           customerAddress: req.body.customerAddress,
           customerPhoneNumber: req.body.customerPhoneNumber,
           totalCustomer: req.body.totalCustomer,
-          relation:req.body.relation,
+          relation: req.body.relation,
           customerIdProof: req.body.customerIdProof,
-          customerIdDetails:req.body.customerIdDetails,
+          customerIdDetails: req.body.customerIdDetails,
           customerCity: req.body.customerCity,
-          customerOccupation:req.body.customerOccupation,
-          customerDestination:req.body.customerDestination,
-           reasonToStay:req.body.reasonToStay,
+          customerOccupation: req.body.customerOccupation,
+          customerDestination: req.body.customerDestination,
+          reasonToStay: req.body.reasonToStay,
           checkInDate: req.body.checkInDate,
           checkInTime: req.body.checkInTime,
           checkOutDate: req.body.checkOutDate,
-          personalCheckOutTime:req.body.personalCheckOutTime,
+          personalCheckOutTime: req.body.personalCheckOutTime,
           checkOutTime: req.body.checkOutTime,
           totalPayment: req.body.totalPayment,
           paymentPaid: req.body.paymentPaid,
           paymentDue: req.body.paymentDue,
           frontDeskExecutiveName: req.body.frontDeskExecutiveName,
-          extraCustomers:req.body.extraCustomers
+          extraCustomers: req.body.extraCustomers
         });
       }
     });
 
     await hotelDetails.save();
+
+    await sendCustomerEmail({
+
+      customerEmail: req.body.customerEmail,
+
+      customerName: req.body.customerName,
+
+      hotelName: hotelDetails?.hotelName,
+
+      roomNo: req.body.roomNo,
+
+      checkOutDate: req.body.checkOutDate,
+
+      personalCheckOutTime: req.body.personalCheckOutTime,
+
+      extraCustomerNames: Array.isArray(req.body.extraCustomers)
+        ? req.body.extraCustomers
+          .map((cust) => cust.customerName)
+          .join(", ")
+        : "",
+
+      emailType: "updated",
+
+    });
+
+
 
     res.status(200).send({
       mssg: "Customer details updated successfully",
@@ -1124,29 +1559,32 @@ exports.updateCustomerDetails = async (req, res) => {
   }
 };
 
-exports.addCustomerDetailsAdvance=async(req,res)=>{
-try{
-const hotelId=req.params.id
-const roomId=req.body.roomId
-const roomType=req.body.roomType
-const floor=req.body.floor
-const roomNo=req.body.roomNo
-const todayDate=req.body.todayDate
-const selectedDate=req.body.selectedDate
-const customerName=req.body.customerName
-const customerAddress=req.body.customerAddress
-const customerPhoneNumber=req.body.customerPhoneNumber
-const totalPayment=req.body.totalPayment
-const advancePayment=req.body.advancePayment
-const frontDeskExecutiveName=req.body.frontDeskExecutiveName
+exports.addCustomerDetailsAdvance = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const roomId = req.body.roomId
+    const roomType = req.body.roomType
+    const floor = req.body.floor
+    const roomNo = req.body.roomNo
+    const todayDate = req.body.todayDate
+    const selectedDate = req.body.selectedDate
+    const customerName = req.body.customerName
+    const customerAddress = req.body.customerAddress
+    const customerPhoneNumber = req.body.customerPhoneNumber
+    const customerEmail = req.body.customerEmail
+    const totalPayment = req.body.totalPayment
+    const advancePayment = req.body.advancePayment
+    const frontDeskExecutiveName = req.body.frontDeskExecutiveName
 
-const hotelDetails=await hotel.findOne({_id:hotelId})
+    const hotelDetails = await hotel.findOne({ _id: hotelId })
 
-hotelDetails.advanceRoomArray.push({roomId:roomId,roomType:roomType,floor:floor,todayDate:todayDate,selectedDate:selectedDate,
-roomNo:roomNo,customerName:customerName,customerAddress:customerAddress, totalPayment:totalPayment,advancePayment:advancePayment,
-customerPhoneNumber:customerPhoneNumber,frontDeskExecutiveName:frontDeskExecutiveName})
+    hotelDetails.advanceRoomArray.push({
+      roomId: roomId, roomType: roomType, floor: floor, todayDate: todayDate, selectedDate: selectedDate,
+      roomNo: roomNo, customerName: customerName, customerAddress: customerAddress, totalPayment: totalPayment, advancePayment: advancePayment,
+      customerPhoneNumber: customerPhoneNumber, customerEmail: customerEmail, frontDeskExecutiveName: frontDeskExecutiveName
+    })
 
-const message=`Dear ${customerName},
+    const message = `Dear ${customerName},
 
 your booking at ${hotelDetails.hotelName} is confirmed.
 
@@ -1160,163 +1598,200 @@ For any assistance, contact hotel
 ${hotelDetails.hotelName}
 `
 
-// try {
-//   await client.messages.create({
-//     body: message,
-//     from: "whatsapp:+14155238886", // Twilio Sandbox
-//     to: "whatsapp:+91" + customerPhoneNumber,
-//   });
+    // try {
+    //   await client.messages.create({
+    //     body: message,
+    //     from: "whatsapp:+14155238886", // Twilio Sandbox
+    //     to: "whatsapp:+91" + customerPhoneNumber,
+    //   });
 
-// } catch (err) {
-//   console.error(
-//     `❌ WhatsApp failed for ${customerPhoneNumber}`,
-//     err.message
-//   );
-// }
+    // } catch (err) {
+    //   console.error(
+    //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+    //     err.message
+    //   );
+    // }
 
-const hotelDetailData=await hotelDetails.save()
-res.status(200).send({mssg:'add advance customers',getAdvanceCustomerDetailsArray:hotelDetailData.advanceRoomArray})
-}catch (e) {
-  console.error(e);
-  res.status(401).send({ mssg: "add customer details advance failed" });
+    const hotelDetailData = await hotelDetails.save()
+    const checkOutDate = selectedDate
+    await sendCustomerEmail({
+
+      customerEmail,
+
+      customerName,
+
+      hotelName: hotelDetails.hotelName,
+
+      roomNo,
+
+      checkOutDate,
+
+      emailType: "checkinadvance",
+
+    });
+
+
+    res.status(200).send({ mssg: 'add advance customers', getAdvanceCustomerDetailsArray: hotelDetailData.advanceRoomArray })
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "add customer details advance failed" });
+  }
 }
-}
 
-exports.getCustomerDetailsAdvance=async(req,res)=>{
-  try{
-  const hotelId=req.params.id
-  const getAdvanceCustomerDetails=await hotel.findOne({_id:hotelId})
-  res.status(200).send({mssg:'get advance customers',getAdvanceCustomerDetailsArray:getAdvanceCustomerDetails.advanceRoomArray})
-  }catch(e){
+exports.getCustomerDetailsAdvance = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const getAdvanceCustomerDetails = await hotel.findOne({ _id: hotelId })
+    res.status(200).send({ mssg: 'get advance customers', getAdvanceCustomerDetailsArray: getAdvanceCustomerDetails.advanceRoomArray })
+  } catch (e) {
     console.error(e);
     res.status(401).send({ mssg: 'get customer details failed' });
   }
+}
+
+exports.deleteCustomerDetailsAdvance = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const customerId = req.body.customerId;
+    const customerName = req.body.customerName
+    const checkInDate = req.body.checkInDate
+    const customerPhoneNumber = req.body.customerPhoneNumber
+
+
+    const hotelDetails = await hotel.findOne({ _id: hotelId })
+    const customerData = hotelDetails.advanceRoomArray.find( (customer) => customer._id.toString() === customerId );
+    if (!customerData) { return res.status(404).send({ mssg: "Customer not found" }); }
+
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { advanceRoomArray: { _id: customerId } } }, // directly remove
+      { new: true }
+    );
+     console.log('hotels',updatedHotel)
+    if (!updatedHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+    // console.log('update hotelds',updatedHotel)
+    // const message=`Dear ${customerName},
+    // your booking at ${hotelDetails.hotelName} is cancelled.
+
+    // check-in Date:${checkInDate}
+
+    // If any refund is applicable, it will be processed as per the hotel’s cancellation policy.
+
+    // ${hotelDetails.hotelName}
+    // `
+    // try {
+    //   await client.messages.create({
+    //     body: message,
+    //     from: "whatsapp:+14155238886", // Twilio Sandbox
+    //     to: "whatsapp:+91" + customerPhoneNumber,
+    //   });
+
+    // } catch (err) {
+    //   console.error(
+    //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
+    //     err.message
+    //   );
+    // }
+    const customerEmail = customerData.customerEmail;
+    const checkOutDate=checkInDate
+await sendCustomerEmail({
+
+  customerEmail,
+
+  customerName,
+
+  hotelName: hotelDetails.hotelName,
+
+  checkOutDate,
+
+  emailType: "checkoutadvance",
+
+});
+
+
+    res.status(200).send({
+      mssg: "Customer details deleted successfully",
+      getAdvanceCustomerDetailsArray: updatedHotel.advanceRoomArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Delete customer details failed" });
   }
-
-  exports.deleteCustomerDetailsAdvance = async (req, res) => {
-    try {
-      const hotelId = req.params.id;
-      const customerId = req.body.customerId;
-      const customerName=req.body.customerName
-      const checkInDate=req.body.checkInDate
-      const customerPhoneNumber=req.body.customerPhoneNumber
+};
 
 
-      const hotelDetails=await hotel.findOne({_id:hotelId})
-  
-      const updatedHotel = await hotel.findByIdAndUpdate(
-        hotelId,
-        { $pull: {advanceRoomArray: { _id: customerId } } }, // directly remove
-        { new: true }
-      );
-  
-      if (!updatedHotel) {
-        return res.status(404).send({ mssg: "Hotel not found" });
-      }
-      // console.log('update hotelds',updatedHotel)
-      // const message=`Dear ${customerName},
-      // your booking at ${hotelDetails.hotelName} is cancelled.
-
-      // check-in Date:${checkInDate}
-
-      // If any refund is applicable, it will be processed as per the hotel’s cancellation policy.
-
-      // ${hotelDetails.hotelName}
-      // `
-      // try {
-      //   await client.messages.create({
-      //     body: message,
-      //     from: "whatsapp:+14155238886", // Twilio Sandbox
-      //     to: "whatsapp:+91" + customerPhoneNumber,
-      //   });
-      
-      // } catch (err) {
-      //   console.error(
-      //     `❌ WhatsApp failed for ${customerPhoneNumber}`,
-      //     err.message
-      //   );
-      // }
-      res.status(200).send({
-        mssg: "Customer details deleted successfully",
-        getAdvanceCustomerDetailsArray: updatedHotel.advanceRoomArray,
-      });
-    } catch (e) {
-      console.error(e);
-      res.status(401).send({ mssg: "Delete customer details failed" });
+exports.updateCustomerDetailsAdvance = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const roomId = req.body.roomId;
+    // console.log('update room id',roomId)
+    const hotelDetails = await hotel.findOne({ _id: hotelId });
+    if (!hotelDetails) {
+      return res.status(404).send({ mssg: "Hotel not found" });
     }
-  };
-  
 
-  exports.updateCustomerDetailsAdvance = async (req, res) => {
-    try {
-      const hotelId = req.params.id;
-      const roomId = req.body.roomId;
-      // console.log('update room id',roomId)
-      const hotelDetails = await hotel.findOne({ _id: hotelId });
-      if (!hotelDetails) {
-        return res.status(404).send({ mssg: "Hotel not found" });
-      }
-  
-      // jis customer ka _id match kare use find karo
-      const customer = hotelDetails.advanceRoomArray.find(
-        (c) => c.roomId.toString() === roomId
-      );
-  
-      if (!customer) {
-        return res.status(404).send({ mssg: "Customer not found" });
-      }
-  
-      // new details assign karo
-      Object.assign(customer, {
-        customerName: req.body.customerName,
-        customerAddress: req.body.customerAddress,
-        customerPhoneNumber: req.body.customerPhoneNumber,
-        frontDeskExecutiveName: req.body.frontDeskExecutiveName,
-        floor:req.body.floor,
-        roomNo:req.body.roomNo,
-        roomId:req.body.roomId,
-        roomType:req.body.roomType,
-        todayDate:req.body.todayDate,
-        selectedDate:req.body.selectedDate,
-        totalPayment:req.body.totalPayment,
-        advancePayment:req.body.advancePayment
-        
-      });
-  
-      const reportCustomer = hotelDetails.advanceRoomArray.find(
-        (c) => c.roomId.toString() === roomId
-      );
-  
-      if (!reportCustomer) {
-        return res.status(404).send({ mssg: "Customer not found" });
-      }
-      Object.assign(reportCustomer, {
-        customerName: req.body.customerName,
-        customerAddress: req.body.customerAddress,
-        customerPhoneNumber: req.body.customerPhoneNumber,
-        frontDeskExecutiveName: req.body.frontDeskExecutiveName,
-        floor:req.body.floor,
-        roomNo:req.body.roomNo,
-        roomId:req.body.roomId,
-        roomType:req.body.roomType,
-        todayDate:req.body.todayDate,
-        selectedDate:req.body.selectedDate,
-        totalPayment:req.body.totalPayment,
-        advancePayment:req.body.advancePayment
-      });
-  // console.log('report data',reportCustomer)
-      await hotelDetails.save();
+    // jis customer ka _id match kare use find karo
+    const customer = hotelDetails.advanceRoomArray.find(
+      (c) => c.roomId.toString() === roomId
+    );
+
+    if (!customer) {
+      return res.status(404).send({ mssg: "Customer not found" });
+    }
+
+    // new details assign karo
+    Object.assign(customer, {
+      customerName: req.body.customerName,
+      customerAddress: req.body.customerAddress,
+      customerPhoneNumber: req.body.customerPhoneNumber,
+      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+      floor: req.body.floor,
+      roomNo: req.body.roomNo,
+      roomId: req.body.roomId,
+      roomType: req.body.roomType,
+      todayDate: req.body.todayDate,
+      selectedDate: req.body.selectedDate,
+      totalPayment: req.body.totalPayment,
+      advancePayment: req.body.advancePayment
+
+    });
+
+    const reportCustomer = hotelDetails.advanceRoomArray.find(
+      (c) => c.roomId.toString() === roomId
+    );
+
+    if (!reportCustomer) {
+      return res.status(404).send({ mssg: "Customer not found" });
+    }
+    Object.assign(reportCustomer, {
+      customerName: req.body.customerName,
+      customerAddress: req.body.customerAddress,
+      customerPhoneNumber: req.body.customerPhoneNumber,
+      frontDeskExecutiveName: req.body.frontDeskExecutiveName,
+      floor: req.body.floor,
+      roomNo: req.body.roomNo,
+      roomId: req.body.roomId,
+      roomType: req.body.roomType,
+      todayDate: req.body.todayDate,
+      selectedDate: req.body.selectedDate,
+      totalPayment: req.body.totalPayment,
+      advancePayment: req.body.advancePayment
+    });
+    // console.log('report data',reportCustomer)
+    await hotelDetails.save();
     //  console.log('details advance',hotelDetails.advanceRoomArray)
-      res.status(200).send({
-        mssg: "Customer details advance updated successfully",
-        getAdvanceCustomerDetailsArray: hotelDetails.advanceRoomArray,
-      });
-    } catch (e) {
-      console.error(e);
-      res.status(401).send({ mssg: "Update customer details failed" });
-    }
-  };
-  exports.deleteReportCustomerDetails = async (req, res) => {
+    res.status(200).send({
+      mssg: "Customer details advance updated successfully",
+      getAdvanceCustomerDetailsArray: hotelDetails.advanceRoomArray,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Update customer details failed" });
+  }
+};
+exports.deleteReportCustomerDetails = async (req, res) => {
   try {
     const hotelId = req.params.id;
     const customerId = req.body.customerId;
@@ -1526,8 +2001,8 @@ exports.deletePersonalCustomerDetails = async (req, res) => {
 //     }
 //      updatedOwner.address=address
 //      updatedOwner.phone=phone
-     
-   
+
+
 //     await hotelObj.save()
 //     res.status(200).send({
 //       mssg: "Profile updated successfully",
@@ -1552,7 +2027,7 @@ exports.updateMyProfile = async (req, res) => {
     const phone = req.body.phone;
     const oldPhone = req.body.oldPhone;
     const address = req.body.address;
-    const email=req.body.email;
+    const email = req.body.email;
     const staffId = req.body.staffId;
     // console.log('staff id', staffId);
     const updateImg = req.file;
@@ -1602,12 +2077,12 @@ exports.updateMyProfile = async (req, res) => {
 
       matchedStaff.address = address || matchedStaff.address;
       matchedStaff.phone = phone || matchedStaff.phone;
-     matchedStaff.email=email || matchedStaff.email
+      matchedStaff.email = email || matchedStaff.email
       await hotelObj.save();
 
       return res.status(200).send({
         mssg: "Staff profile updated successfully",
-        updatedData:hotelObj,
+        updatedData: hotelObj,
         oldPhone: oldPhone,
         newPhone: phone,
       });
@@ -1646,7 +2121,7 @@ exports.updateMyProfile = async (req, res) => {
 
     updatedOwner.address = address;
     updatedOwner.phone = phone;
-    updatedOwner.email=email
+    updatedOwner.email = email
 
     await hotelObj.save();
 
@@ -1704,8 +2179,8 @@ exports.updateMyProfile = async (req, res) => {
 
 exports.addStaffDetails = async (req, res) => {
   try {
-    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, staffEmail:email,
-      staffPost: post,imgUrl:imgUrl,message:message} = req.body;
+    const { hotelId, staffName: name, staffPhone: phone, staffAddress: address, staffEmail: email,
+      staffPost: post, imgUrl: imgUrl, message: message } = req.body;
     const image = req.file;
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
@@ -1757,18 +2232,18 @@ exports.addStaffDetails = async (req, res) => {
 
     const notifyDoc = await Notify.create({
       hotelId,
-      name:req.body.personName,
-      personName:name,
+      name: req.body.personName,
+      personName: name,
       message,
       imgUrl
     });
 
     // 2️⃣ Store reference in hotel (same feeling as before)
     hotelObj.notifyMessage.push(notifyDoc._id);
-    const notifyMessageArray=await Notify.find()
+    const notifyMessageArray = await Notify.find()
     // Save
     await hotelObj.save();
-// console.log('hotel obj in final',hotelObj)
+    // console.log('hotel obj in final',hotelObj)
     res.status(200).send({
       mssg: "Staff added successfully",
       hotelObj,
@@ -1777,7 +2252,7 @@ exports.addStaffDetails = async (req, res) => {
       owner2: hotelObj.owner2,
       owner3: hotelObj.owner3,
       owner4: hotelObj.owner4,
-      notifyMessageArray:notifyMessageArray
+      notifyMessageArray: notifyMessageArray
     });
   } catch (e) {
     console.error("Add staff error:", e);
@@ -1788,28 +2263,28 @@ exports.addStaffDetails = async (req, res) => {
   }
 };
 
-exports.getStaffPlusOwner=async(req,res)=>{
-  try{
-    const hotelId=req.params.id
-    const hotelObj=await hotel.findOne({_id:hotelId})
-    const staffObj=hotelObj.staff
-    const owner1=hotelObj.owner1
-    const owner2=hotelObj.owner2
-    const owner3=hotelObj.owner3
-    const owner4=hotelObj.owner4
-    const notifyMessageArray=await Notify.find()
+exports.getStaffPlusOwner = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const hotelObj = await hotel.findOne({ _id: hotelId })
+    const staffObj = hotelObj.staff
+    const owner1 = hotelObj.owner1
+    const owner2 = hotelObj.owner2
+    const owner3 = hotelObj.owner3
+    const owner4 = hotelObj.owner4
+    const notifyMessageArray = await Notify.find()
     res.status(200).send({
       mssg: "staff details",
-     hotelObj:hotelObj,
-     staff:staffObj,
-     owner1:owner1,
-     owner2:owner2,
-     owner3:owner3,
-     owner4:owner4,
-     notifyMessageArray:notifyMessageArray
+      hotelObj: hotelObj,
+      staff: staffObj,
+      owner1: owner1,
+      owner2: owner2,
+      owner3: owner3,
+      owner4: owner4,
+      notifyMessageArray: notifyMessageArray
     });
   }
-  catch(e){
+  catch (e) {
     console.error(e);
     res.status(401).send({ mssg: 'get staff plus owner details failed' });
   }
@@ -1820,10 +2295,10 @@ exports.deleteStaffOwner = async (req, res) => {
     const hotelId = req.params.id;
     // console.log('hotelid',hotelId)
     const staffId = req.body.staffId;
-    const imgUrl=req.body.imgUrl
-    const message=req.body.message
-    
-    
+    const imgUrl = req.body.imgUrl
+    const message = req.body.message
+
+
     // Find hotel
     const hotelObj = await hotel.findById(hotelId);
     if (!hotelObj) return res.status(404).send({ mssg: "Hotel not found" });
@@ -1840,7 +2315,7 @@ exports.deleteStaffOwner = async (req, res) => {
     if (!staffKey) {
       return res.status(404).send({ mssg: "Staff not found" });
     }
-    const staffName=staffObj[staffKey].name
+    const staffName = staffObj[staffKey].name
     const imagePublicId = staffObj[staffKey].imagePublicId;
     if (imagePublicId) {
       try {
@@ -1856,15 +2331,15 @@ exports.deleteStaffOwner = async (req, res) => {
     hotelObj.staff = new Map(Object.entries(staffObj));
     const notifyDoc = await Notify.create({
       hotelId,
-      name:req.body.personName,
-      personName:staffName,
+      name: req.body.personName,
+      personName: staffName,
       message,
       imgUrl
     });
 
     // 2️⃣ Store reference in hotel (same feeling as before)
     hotelObj.notifyMessage.push(notifyDoc._id);
-    const notifyMessageArray=await Notify.find()
+    const notifyMessageArray = await Notify.find()
     await hotelObj.save();
 
     const io = req.app.locals.io; // ✅ Access socket instance
@@ -1879,23 +2354,23 @@ exports.deleteStaffOwner = async (req, res) => {
     });
 
 
-    const owner1=hotelObj.owner1
-    const owner2=hotelObj.owner2
-    const owner3=hotelObj.owner3
-    const owner4=hotelObj.owner4
-    const staffObjs=hotelObj.staff
+    const owner1 = hotelObj.owner1
+    const owner2 = hotelObj.owner2
+    const owner3 = hotelObj.owner3
+    const owner4 = hotelObj.owner4
+    const staffObjs = hotelObj.staff
 
-    res.status(200).send({ 
-    mssg: "staff details",
-    hotelObj:hotelObj,
-     staff:staffObjs,
-     owner1:owner1,
-     owner2:owner2,
-     owner3:owner3,
-     owner4:owner4,
-     notifyMessageArray:notifyMessageArray
-  
-  });
+    res.status(200).send({
+      mssg: "staff details",
+      hotelObj: hotelObj,
+      staff: staffObjs,
+      owner1: owner1,
+      owner2: owner2,
+      owner3: owner3,
+      owner4: owner4,
+      notifyMessageArray: notifyMessageArray
+
+    });
   } catch (e) {
     console.error(e);
     res.status(500).send({ mssg: "Delete failed", error: e.message });
@@ -1903,12 +2378,12 @@ exports.deleteStaffOwner = async (req, res) => {
 };
 
 exports.updateStaffProfile = async (req, res) => {
-  try{
+  try {
     const hotelId = req.body.hotelId;
     const name = req.body.staffName;
     const phone = req.body.staffPhone;
     const address = req.body.staffAddress;
-    const email=req.body.staffEmail
+    const email = req.body.staffEmail
     const post = req.body.staffPost;
     const staffId = req.body.staffId;
     const image = req.file;
@@ -1962,21 +2437,21 @@ exports.updateStaffProfile = async (req, res) => {
 
       await hotelObj.save();
 
-      const owner1=hotelObj.owner1
-      const owner2=hotelObj.owner2
-      const owner3=hotelObj.owner3
-      const owner4=hotelObj.owner4
-      const staffObjs=hotelObj.staff
-  
+      const owner1 = hotelObj.owner1
+      const owner2 = hotelObj.owner2
+      const owner3 = hotelObj.owner3
+      const owner4 = hotelObj.owner4
+      const staffObjs = hotelObj.staff
+
 
       return res.status(200).send({
         mssg: "staff details",
-        hotelObj:hotelObj,
-         staff:staffObjs,
-         owner1:owner1,
-         owner2:owner2,
-         owner3:owner3,
-         owner4:owner4
+        hotelObj: hotelObj,
+        staff: staffObjs,
+        owner1: owner1,
+        owner2: owner2,
+        owner3: owner3,
+        owner4: owner4
       });
     }
   }
@@ -2071,10 +2546,10 @@ exports.addOwner = async (req, res) => {
     const name = req.body.ownerName;
     const address = req.body.ownerAddress;
     const phone = req.body.ownerPhone;
-    const email=req.body.ownerEmail
+    const email = req.body.ownerEmail
     const image = req.file
-    const imgUrl=req.body.imgUrl
-    const message=req.body.message
+    const imgUrl = req.body.imgUrl
+    const message = req.body.message
     let imageUrl = null;
     let imagePublicId = null;
 
@@ -2126,15 +2601,15 @@ exports.addOwner = async (req, res) => {
 
     const notifyDoc = await Notify.create({
       hotelId,
-      name:req.body.personName,
-      personName:name,
+      name: req.body.personName,
+      personName: name,
       message,
       imgUrl
     });
 
     // 2️⃣ Store reference in hotel (same feeling as before)
     hotelObj.notifyMessage.push(notifyDoc._id);
-    const notifyMessageArray=await Notify.find()
+    const notifyMessageArray = await Notify.find()
     await hotelObj.save();
 
     const { owner1, owner2, owner3, owner4, staff: staffObjs } = hotelObj;
@@ -2147,7 +2622,7 @@ exports.addOwner = async (req, res) => {
       owner2,
       owner3,
       owner4,
-      notifyMessageArray:notifyMessageArray
+      notifyMessageArray: notifyMessageArray
     });
   } catch (e) {
     console.error(e);
@@ -2159,7 +2634,7 @@ exports.addOwner = async (req, res) => {
 exports.addRoom = async (req, res) => {
   try {
     const hotelId = req.body.hotelId;
-    const { floor, roomType, bedType, roomNumber,name,imgUrl,message } = req.body;
+    const { floor, roomType, bedType, roomNumber, name, imgUrl, message } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: hotelId });
     // console.log('hotel is',hotelObj.totalRoom)
@@ -2218,10 +2693,10 @@ exports.addRoom = async (req, res) => {
     res.status(200).send({
       mssg: "New room added successfully",
       matchedHotels: hotelObj,
-      notifyMessageArray:hotelObj.notifyMessage,
-      roomNumber:notifyDoc.roomNo,
-      hotelName:hotelObj.hotelName,
-      hotelId:hotelId
+      notifyMessageArray: hotelObj.notifyMessage,
+      roomNumber: notifyDoc.roomNo,
+      hotelName: hotelObj.hotelName,
+      hotelId: hotelId
     });
   } catch (e) {
     console.error(e);
@@ -2232,7 +2707,7 @@ exports.addRoom = async (req, res) => {
 exports.deleteRoom = async (req, res) => {
   try {
     const hotelId = req.body.id;
-    const { floor, floorId,name,imgUrl,message,roomNumber } = req.body;
+    const { floor, floorId, name, imgUrl, message, roomNumber } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: hotelId });
 
@@ -2266,14 +2741,14 @@ exports.deleteRoom = async (req, res) => {
     hotelObj.room.set(floor, roomMap);
 
     if (hotelObj.totalRoom !== undefined) {
-      hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) -1;
+      hotelObj.totalRoom = parseInt(hotelObj.totalRoom, 10) - 1;
     }
     // ✅ Save the changes permanently
 
     const notifyDoc = await Notify.create({
       hotelId,
       name,
-      roomNo:roomNumber,
+      roomNo: roomNumber,
       message,
       imgUrl
     });
@@ -2282,13 +2757,13 @@ exports.deleteRoom = async (req, res) => {
     hotelObj.notifyMessage.push(notifyDoc._id);
     await hotelObj.save();
 
-    return res.status(200).send({ 
-      mssg: "Room deleted successfully", 
+    return res.status(200).send({
+      mssg: "Room deleted successfully",
       matchedHotels: hotelObj,
-      roomId:floorId,
-      roomName:floor,
-      notifyMessageArray:hotelObj.notifyMessage,
-      roomNumber:notifyDoc.roomNo
+      roomId: floorId,
+      roomName: floor,
+      notifyMessageArray: hotelObj.notifyMessage,
+      roomNumber: notifyDoc.roomNo
     });
 
   } catch (e) {
@@ -2373,7 +2848,7 @@ exports.addFloor = async (req, res) => {
     const {
       id: hotelId,
       name,
-       imgUrl,
+      imgUrl,
       message,
       floorName, // optional (sirf notify ke liye)
     } = req.body;
@@ -2429,7 +2904,7 @@ exports.addFloor = async (req, res) => {
       name,
       message,
       imgUrl,
-     floorName
+      floorName
     });
 
     // 🔗 Hotel me sirf reference push karo
@@ -2455,10 +2930,10 @@ exports.addFloor = async (req, res) => {
 
 exports.deleteFloor = async (req, res) => {
   try {
-    const { id, floorName , name,imgUrl, message} = req.body;
+    const { id, floorName, name, imgUrl, message } = req.body;
 
     const hotelObj = await hotel.findOne({ _id: id });
-   let hotelId=id
+    let hotelId = id
     if (!hotelObj) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
@@ -2494,7 +2969,7 @@ exports.deleteFloor = async (req, res) => {
     if (!floorExists) {
       return res.status(404).send({ mssg: "Floor not found in this hotel" });
     }
-    
+
     const currentTotalFloor = parseInt(hotelObj.totalFloor) || 0;
     const currentTotalRoom = parseInt(hotelObj.totalRoom) || 0;
 
@@ -2502,13 +2977,13 @@ exports.deleteFloor = async (req, res) => {
     hotelObj.totalRoom = Math.max(currentTotalRoom - deletedRoomCount, 0).toString();
     // Assign back and save
     hotelObj.room = room;
-    
+
     const notifyDoc = await Notify.create({
       hotelId,
       name,
       message,
       imgUrl,
-     floorName
+      floorName
     });
 
     // 🔗 Hotel me sirf reference push karo
@@ -2524,7 +2999,7 @@ exports.deleteFloor = async (req, res) => {
     res.status(200).send({
       mssg: "Floor deleted successfully",
       matchedHotels: hotelObj,
-      floorName:floorName,
+      floorName: floorName,
       notifyMessageArray: hotelObj.notifyMessage,
 
     });
@@ -2535,183 +3010,185 @@ exports.deleteFloor = async (req, res) => {
 };
 
 exports.addMaintenanceCleanRoom = async (req, res) => {
-try{
-const hotelId=req.params.id
-const floorName=req.body.floorName
-const roomId=req.body.roomId
-const roomNo=req.body.roomNo
-const roomType=req.body.roomType
-const type=req.body.type
-const mainCleanerName=req.body.mainCleanerName
-const todayDate=req.body.todayDate
-const hotelObj = await hotel.findOne({ _id: hotelId });
+  try {
+    const hotelId = req.params.id
+    const floorName = req.body.floorName
+    const roomId = req.body.roomId
+    const roomNo = req.body.roomNo
+    const roomType = req.body.roomType
+    const type = req.body.type
+    const mainCleanerName = req.body.mainCleanerName
+    const todayDate = req.body.todayDate
+    const hotelObj = await hotel.findOne({ _id: hotelId });
 
     if (!hotelObj) {
       return res.status(404).send({ mssg: "Hotel not found" });
     }
- const maintainCleanRoomArray=hotelObj.maintainCleanRoom
-maintainCleanRoomArray.push({roomId:roomId,floorName:floorName,roomNo:roomNo,roomType:roomType,
-  type:type,mainCleanerName:mainCleanerName,todayDate:todayDate})
+    const maintainCleanRoomArray = hotelObj.maintainCleanRoom
+    maintainCleanRoomArray.push({
+      roomId: roomId, floorName: floorName, roomNo: roomNo, roomType: roomType,
+      type: type, mainCleanerName: mainCleanerName, todayDate: todayDate
+    })
 
-const data=await hotelObj.save()
-// console.log('data us',data)
-res.status(200).send({mssg:'maintainCleanRoom',maintainCleanRoom:data.maintainCleanRoom })
-}catch(e){
-  console.error("Error maintain cleaner room:", e);
-  res.status(500).send({ mssg: "Error deleting floor", error: e.message });
-}
+    const data = await hotelObj.save()
+    // console.log('data us',data)
+    res.status(200).send({ mssg: 'maintainCleanRoom', maintainCleanRoom: data.maintainCleanRoom })
+  } catch (e) {
+    console.error("Error maintain cleaner room:", e);
+    res.status(500).send({ mssg: "Error deleting floor", error: e.message });
+  }
 }
 
-exports.getMaintenanceCleanRoom=async(req,res)=>{
-  try{
-  const hotelId=req.params.id
-  const getMaintainCleanRoom=await hotel.findOne({_id:hotelId})
-  res.status(200).send({mssg:'maintainCleanRoom',maintainCleanRoom:getMaintainCleanRoom.maintainCleanRoom})
-  }catch(e){
+exports.getMaintenanceCleanRoom = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const getMaintainCleanRoom = await hotel.findOne({ _id: hotelId })
+    res.status(200).send({ mssg: 'maintainCleanRoom', maintainCleanRoom: getMaintainCleanRoom.maintainCleanRoom })
+  } catch (e) {
     console.error(e);
     res.status(401).send({ mssg: 'get customer details failed' });
   }
+}
+
+exports.deleteMaintenanceCleanRoom = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const roomId = req.body.roomId;
+
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { maintainCleanRoom: { _id: roomId } } }, // directly remove
+      { new: true }
+    );
+
+    if (!updatedHotel) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    res.status(200).send({
+      mssg: "maintainCleanRoom",
+      maintainCleanRoom: updatedHotel.maintainCleanRoom,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: "Delete room details failed" });
   }
+};
 
-  exports.deleteMaintenanceCleanRoom = async (req, res) => {
-    try {
-      const hotelId = req.params.id;
-      const roomId = req.body.roomId;
-  
-      const updatedHotel = await hotel.findByIdAndUpdate(
-        hotelId,
-        { $pull: {maintainCleanRoom: { _id: roomId } } }, // directly remove
-        { new: true }
-      );
-  
-      if (!updatedHotel) {
-        return res.status(404).send({ mssg: "Hotel not found" });
-      }
-  
-      res.status(200).send({
-        mssg: "maintainCleanRoom",
-        maintainCleanRoom: updatedHotel.maintainCleanRoom,
-      });
-    } catch (e) {
-      console.error(e);
-      res.status(401).send({ mssg: "Delete room details failed" });
+
+exports.deleteHotel = async (req, res) => {
+  try {
+    const hotelId = req.body.id;
+    const name = req.body.name;
+    const email = req.body.email;
+    const phone = req.body.phone;
+    const hotelName = req.body.hotelName;
+    const hotelAddress = req.body.hotelAddress;
+    const deletedBy = req.body.post
+
+    // 1️⃣ FIND HOTEL
+    const hotelObj = await hotel.findOne({ _id: hotelId });
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
     }
-  };
-  
 
-  exports.deleteHotel = async (req, res) => {
-    try {
-      const hotelId = req.body.id;
-      const name=req.body.name;
-      const email=req.body.email;
-      const phone=req.body.phone;
-      const hotelName=req.body.hotelName;
-      const hotelAddress=req.body.hotelAddress;
-      const deletedBy=req.body.post
-  
-      // 1️⃣ FIND HOTEL
-      const hotelObj = await hotel.findOne({ _id: hotelId });
-      if (!hotelObj) {
-        return res.status(404).send({ mssg: "Hotel not found" });
-      }
+    // 2️⃣ COLLECT ALL PUBLIC IDs TO DELETE FROM CLOUDINARY
+    let allPublicIds = [];
 
-      // 2️⃣ COLLECT ALL PUBLIC IDs TO DELETE FROM CLOUDINARY
-      let allPublicIds = [];
-  
-      // ---- OWNER IMAGES ----
-    
-     if (hotelObj.owner1.imagePublicId) allPublicIds.push(hotelObj.owner1.imagePublicId);
-     if (hotelObj.owner2.imagePublicId) allPublicIds.push(hotelObj.owner2.imagePublicId);
-     if (hotelObj.owner3.imagePublicId) allPublicIds.push(hotelObj.owner3.imagePublicId);
-     if (hotelObj.owner4.imagePublicId) allPublicIds.push(hotelObj.owner4.imagePublicId);
-  
-      // ---- STAFF IMAGES ----
+    // ---- OWNER IMAGES ----
+
+    if (hotelObj.owner1.imagePublicId) allPublicIds.push(hotelObj.owner1.imagePublicId);
+    if (hotelObj.owner2.imagePublicId) allPublicIds.push(hotelObj.owner2.imagePublicId);
+    if (hotelObj.owner3.imagePublicId) allPublicIds.push(hotelObj.owner3.imagePublicId);
+    if (hotelObj.owner4.imagePublicId) allPublicIds.push(hotelObj.owner4.imagePublicId);
+
+    // ---- STAFF IMAGES ----
     // ---- STAFF IMAGES FROM MONGOOSE MAP ----
-if (hotelObj.staff instanceof Map) {
-  hotelObj.staff.forEach((staffMember, key) => {
-    if (staffMember?.imagePublicId) {
-      allPublicIds.push(staffMember.imagePublicId);
-    }
-  });
-}
-if (Array.isArray(hotelObj.roomArray)) {
-  hotelObj.roomArray.forEach((room) => {
-    if (room?.imagePublicId) {
-      allPublicIds.push(room.imagePublicId);
-    }
-  });
-}
-  
-      // ---- HOTEL IMAGES ----
-      if (hotelObj.hotelImg1PublicId) allPublicIds.push(hotelObj.hotelImg1PublicId);
-      if (hotelObj.hotelImg2PublicId) allPublicIds.push(hotelObj.hotelImg2PublicId);
-      if (hotelObj.hotelImg3PublicId) allPublicIds.push(hotelObj.hotelImg3PublicId);
-      if (hotelObj.hotelImg4PublicId) allPublicIds.push(hotelObj.hotelImg4PublicId);
-  
-      // ---- CUSTOMER SIGNATURES FROM roomArray ----
-      // hotelObj.roomArray?.forEach((room) => {
-      //   if (room.customerSignaturePublicId) {
-      //     allPublicIds.push(room.customerSignaturePublicId);
-      //   }
-      // });
-  
-      // // ---- CUSTOMER SIGNATURES FROM reportArray ----
-      // hotelObj.reportArray?.forEach((room) => {
-      //   if (room.customerSignaturePublicId) {
-      //     allPublicIds.push(room.customerSignaturePublicId);
-      //   }
-      // });
-  
-      // // ---- ADVANCE ROOM CUSTOMER SIGNATURES if any ----
-      // hotelObj.advanceRoomArray?.forEach((room) => {
-      //   if (room.customerSignaturePublicId) {
-      //     allPublicIds.push(room.customerSignaturePublicId);
-      //   }
-      // });
-  
-      // ---- PROFILE IMAGES ----
-      // hotelObj.profileArray?.forEach((item) => {
-      //   console.log('id is sd',item.publicId)
-      //   if (item.imagePublicId) {
-      //     allPublicIds.push(item.imagePublicId);
-      //   }
-      // });
-  
-  
-      // 3️⃣ REMOVE DUPLICATES (safety)
-      allPublicIds = [...new Set(allPublicIds)];
-      // console.log('all public',allPublicIds)
-
-      const profileClean = await hotel.updateMany(
-        {},
-        {
-          $pull: {
-            profileArray: { hotelId: hotelId },
-          },
+    if (hotelObj.staff instanceof Map) {
+      hotelObj.staff.forEach((staffMember, key) => {
+        if (staffMember?.imagePublicId) {
+          allPublicIds.push(staffMember.imagePublicId);
         }
-      );
-      // console.log("Profile removed from hotels:", profileClean.modifiedCount);
-      // 4️⃣ DELETE FROM CLOUDINARY
-      for (let id of allPublicIds) {
-        await cloudinary.uploader.destroy(id);
-      }
-  
-      // 5️⃣ DELETE HOTEL DOCUMENT FROM DB
-      await hotel.deleteOne({ _id: hotelId });
-      const deletedAt = new Date().toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
       });
+    }
+    if (Array.isArray(hotelObj.roomArray)) {
+      hotelObj.roomArray.forEach((room) => {
+        if (room?.imagePublicId) {
+          allPublicIds.push(room.imagePublicId);
+        }
+      });
+    }
 
-      await resend.emails.send({
-        from: "HotelOptix Support <onboarding@resend.dev>",
-        to: "hoteloptix@gmail.com",
-        subject: `New Delete Request from ${hotelName}`,
-      
-        html: `
+    // ---- HOTEL IMAGES ----
+    if (hotelObj.hotelImg1PublicId) allPublicIds.push(hotelObj.hotelImg1PublicId);
+    if (hotelObj.hotelImg2PublicId) allPublicIds.push(hotelObj.hotelImg2PublicId);
+    if (hotelObj.hotelImg3PublicId) allPublicIds.push(hotelObj.hotelImg3PublicId);
+    if (hotelObj.hotelImg4PublicId) allPublicIds.push(hotelObj.hotelImg4PublicId);
+
+    // ---- CUSTOMER SIGNATURES FROM roomArray ----
+    // hotelObj.roomArray?.forEach((room) => {
+    //   if (room.customerSignaturePublicId) {
+    //     allPublicIds.push(room.customerSignaturePublicId);
+    //   }
+    // });
+
+    // // ---- CUSTOMER SIGNATURES FROM reportArray ----
+    // hotelObj.reportArray?.forEach((room) => {
+    //   if (room.customerSignaturePublicId) {
+    //     allPublicIds.push(room.customerSignaturePublicId);
+    //   }
+    // });
+
+    // // ---- ADVANCE ROOM CUSTOMER SIGNATURES if any ----
+    // hotelObj.advanceRoomArray?.forEach((room) => {
+    //   if (room.customerSignaturePublicId) {
+    //     allPublicIds.push(room.customerSignaturePublicId);
+    //   }
+    // });
+
+    // ---- PROFILE IMAGES ----
+    // hotelObj.profileArray?.forEach((item) => {
+    //   console.log('id is sd',item.publicId)
+    //   if (item.imagePublicId) {
+    //     allPublicIds.push(item.imagePublicId);
+    //   }
+    // });
+
+
+    // 3️⃣ REMOVE DUPLICATES (safety)
+    allPublicIds = [...new Set(allPublicIds)];
+    // console.log('all public',allPublicIds)
+
+    const profileClean = await hotel.updateMany(
+      {},
+      {
+        $pull: {
+          profileArray: { hotelId: hotelId },
+        },
+      }
+    );
+    // console.log("Profile removed from hotels:", profileClean.modifiedCount);
+    // 4️⃣ DELETE FROM CLOUDINARY
+    for (let id of allPublicIds) {
+      await cloudinary.uploader.destroy(id);
+    }
+
+    // 5️⃣ DELETE HOTEL DOCUMENT FROM DB
+    await hotel.deleteOne({ _id: hotelId });
+    const deletedAt = new Date().toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    await resend.emails.send({
+      from: "HotelOptix Support <onboarding@resend.dev>",
+      to: "hoteloptix@gmail.com",
+      subject: `New Delete Request from ${hotelName}`,
+
+      html: `
         <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
           
           <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
@@ -2775,334 +3252,336 @@ if (Array.isArray(hotelObj.roomArray)) {
       
         </div>
         `
-      });
-      res.status(200).send({
-        mssg: "Hotel deleted successfully",
-        deletedImages: hotelObj
-      });
-  
-    } catch (e) {
-      console.log(e);
-      res.status(500).send({ mssg: "Delete hotel failed", error: e.message });
-    } 
-  };
+    });
+    res.status(200).send({
+      mssg: "Hotel deleted successfully",
+      deletedImages: hotelObj
+    });
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ mssg: "Delete hotel failed", error: e.message });
+  }
+};
 
 
-  exports.updateHotelImage = async (req, res) => {
-    try {
-      const hotelId = req.body.id;
-      const updateHotelImg = req.file;
-  
-      const hotelObj = await hotel.findById(hotelId);
-      if (!hotelObj) {
-        return res.status(404).send({ mssg: "Hotel not found" });
+exports.updateHotelImage = async (req, res) => {
+  try {
+    const hotelId = req.body.id;
+    const updateHotelImg = req.file;
+
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    if (updateHotelImg) {
+
+      // 1️⃣ delete old image
+      if (hotelObj.hotelImgPublicId) {
+        await cloudinary.uploader.destroy(hotelObj.hotelImgPublicId);
       }
-  
-      if (updateHotelImg) {
-  
-        // 1️⃣ delete old image
-        if (hotelObj.hotelImgPublicId) {
-          await cloudinary.uploader.destroy(hotelObj.hotelImgPublicId);
+
+      // 2️⃣ upload new image
+      const result = await cloudinary.uploader.upload(updateHotelImg.path, {
+        folder: "hotelImages",
+      });
+
+      // 3️⃣ update DB (guaranteed)
+      await hotel.updateOne(
+        { _id: hotelId },
+        {
+          hotelImg: result.secure_url,
+          hotelImgPublicId: result.public_id,
         }
-  
-        // 2️⃣ upload new image
-        const result = await cloudinary.uploader.upload(updateHotelImg.path, {
-          folder: "hotelImages",
-        });
-  
-        // 3️⃣ update DB (guaranteed)
-        await hotel.updateOne(
-          { _id: hotelId },
-          {
-            hotelImg: result.secure_url,
-            hotelImgPublicId: result.public_id,
-          }
-        );
-      }
-  
-      const updated = await hotel.findById(hotelId);
-  
-      res.status(200).send({
-        mssg: "Hotel Image updated successfully",
-        updatedData: updated,
-      });
-  
-    } catch (e) {
-      res.status(500).send({
-        mssg: "Update profile failed",
-        error: e.message,
-      });
-    }
-  };
-  
-  // exports.addNotifcationToken = async (req, res) => {
-  //   try {
-  //     const hotelId = req.params.id;
-  //     const { notifyToken, phone } = req.body;
-  
-  //     const hotelObj = await hotel.findById(hotelId);
-  //     if (!hotelObj) {
-  //       return res.status(404).json({ msg: "Hotel not found" });
-  //     }
-  
-  //     // ✅ prevent duplicate tokens
-  //     // const alreadyExists = hotelObj.notificationToken.some(
-  //     //   (item) => item.phone === phone
-  //     // );
-  
-  //     // if (!alreadyExists) {
-  //     //   hotelObj.notificationToken.push({
-  //     //     token: notifyToken,
-  //     //     phone,
-  //     //   });
-  //     // }
-  //     hotelObj.notificationToken.push({
-  //       token: notifyToken,
-  //       phone,
-  //     });
-  //     await hotelObj.save();
-  //   let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
-  //     res.status(200).json({
-  //       msg: "Notification token ",
-  //       notifyTokenArray:finalNotifyArray,
-  //     });
-  //   } catch (e) {
-  //     res.status(500).json({
-  //       msg: "Failed to save notification token",
-  //       error: e.message,
-  //     });
-  //   }
-  // };
-  exports.addNotifcationToken = async (req, res) => {
-    try {
-      const hotelId = req.params.id;
-      const { notifyToken, phone } = req.body;
-  
-      const hotelObj = await hotel.findById(hotelId);
-      if (!hotelObj) {
-        return res.status(404).json({ msg: "Hotel not found" });
-      }
-  
-      // 🔍 check if token already exists
-      const alreadyExists = hotelObj.notificationToken.some(
-        (item) => item.token === notifyToken
       );
-  
-      // ⛔ don't push duplicate
-      if (!alreadyExists) {
-        hotelObj.notificationToken.push({
-          token: notifyToken,
-          phone,
-        });
-        await hotelObj.save();
-      }
-      // let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
-      // ⚠️ don't remove same token from response (your old filter did that)
-      res.status(200).json({
-        msg: alreadyExists
-          ? "Token already exists — not added again"
-          : "Notification token saved",
-        notifyTokenArray:hotelObj.notificationToken,
-      });
-  
-    } catch (e) {
-      res.status(500).json({
-        msg: "Failed to save notification token",
-        error: e.message,
-      });
     }
-  };
-  
+
+    const updated = await hotel.findById(hotelId);
+
+    res.status(200).send({
+      mssg: "Hotel Image updated successfully",
+      updatedData: updated,
+    });
+
+  } catch (e) {
+    res.status(500).send({
+      mssg: "Update profile failed",
+      error: e.message,
+    });
+  }
+};
+
+// exports.addNotifcationToken = async (req, res) => {
+//   try {
+//     const hotelId = req.params.id;
+//     const { notifyToken, phone } = req.body;
+
+//     const hotelObj = await hotel.findById(hotelId);
+//     if (!hotelObj) {
+//       return res.status(404).json({ msg: "Hotel not found" });
+//     }
+
+//     // ✅ prevent duplicate tokens
+//     // const alreadyExists = hotelObj.notificationToken.some(
+//     //   (item) => item.phone === phone
+//     // );
+
+//     // if (!alreadyExists) {
+//     //   hotelObj.notificationToken.push({
+//     //     token: notifyToken,
+//     //     phone,
+//     //   });
+//     // }
+//     hotelObj.notificationToken.push({
+//       token: notifyToken,
+//       phone,
+//     });
+//     await hotelObj.save();
+//   let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+//     res.status(200).json({
+//       msg: "Notification token ",
+//       notifyTokenArray:finalNotifyArray,
+//     });
+//   } catch (e) {
+//     res.status(500).json({
+//       msg: "Failed to save notification token",
+//       error: e.message,
+//     });
+//   }
+// };
+exports.addNotifcationToken = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const { notifyToken, phone } = req.body;
+
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) {
+      return res.status(404).json({ msg: "Hotel not found" });
+    }
+
+    // 🔍 check if token already exists
+    const alreadyExists = hotelObj.notificationToken.some(
+      (item) => item.token === notifyToken
+    );
+
+    // ⛔ don't push duplicate
+    if (!alreadyExists) {
+      hotelObj.notificationToken.push({
+        token: notifyToken,
+        phone,
+      });
+      await hotelObj.save();
+    }
+    // let finalNotifyArray=hotelObj.notificationToken.filter((item)=>item.token!==notifyToken)
+    // ⚠️ don't remove same token from response (your old filter did that)
+    res.status(200).json({
+      msg: alreadyExists
+        ? "Token already exists — not added again"
+        : "Notification token saved",
+      notifyTokenArray: hotelObj.notificationToken,
+    });
+
+  } catch (e) {
+    res.status(500).json({
+      msg: "Failed to save notification token",
+      error: e.message,
+    });
+  }
+};
 
 
-  exports.getNotifcationToken=async(req,res)=>{
-    try{
-    const hotelId=req.params.id
-    const hotelObj=await hotel.findOne({_id:hotelId})
+
+exports.getNotifcationToken = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const hotelObj = await hotel.findOne({ _id: hotelId })
     const token = req.query.token;
     let notifyArray
-    notifyArray=hotelObj.notificationToken
-   notifyArray=notifyArray.filter((item)=>item.token!==token)
-    res.status(200).send({ msg: "Notification token",
-    notifyTokenArray:notifyArray})
-    }catch(e){
-      console.error(e);
-      res.status(401).send({ mssg: 'get customer details failed' });
+    notifyArray = hotelObj.notificationToken
+    notifyArray = notifyArray.filter((item) => item.token !== token)
+    res.status(200).send({
+      msg: "Notification token",
+      notifyTokenArray: notifyArray
+    })
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get customer details failed' });
+  }
+}
+
+
+
+exports.getMessageNotify = async (req, res) => {
+  try {
+    const hotelId = new mongoose.Types.ObjectId(req.params.id);
+
+    const hotelObj = await hotel
+      .findById(hotelId)
+      .populate({
+        path: "notifyMessage",
+        options: { sort: { createdAt: -1 } } // latest first (optional)
+      })
+      .select("notifyMessage");
+
+    if (!hotelObj) {
+      return res.status(404).send({ msg: "Hotel not found" });
     }
+
+    res.status(200).send({
+      msg: "Notification list",
+      notifyMessageArray: hotelObj.notifyMessage // ✅ ARRAY OF OBJECTS
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ msg: "Get notification failed" });
+  }
+};
+
+
+exports.deleteNotifcationToken = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const notifyToken = req.body.notifyToken;
+    const deadToken = req.body.deadToken
+    // 1️⃣ Find hotel first
+    const hotelObj = await hotel.findById(hotelId);
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    if (Array.isArray(deadToken) && deadToken.length > 0) {
+
+      await hotel.updateOne(
+        { _id: hotelId },
+        {
+          $pull: {
+            notificationToken: {
+              token: { $in: deadToken },
+            },
+          },
+        }
+      );
+
+      // 🔥 AB FINAL LIST NIKAL KE YAHI RETURN KAR DO
+      const finalHotel = await hotel.findById(hotelId).select("notificationToken");
+
+      return res.status(200).send({
+        mssg: "Dead tokens removed",
+        notifyTokenArray: finalHotel.notificationToken,
+      });
+    }
+
+    // 2️⃣ Find the specific customer inside roomArray
+    const tokenData = hotelObj.notificationToken.find(
+      (item) => item.token.toString() === notifyToken
+    );
+
+    if (!tokenData) {
+      return res.status(404).send({ mssg: "token not found" });
     }
 
 
-    
-    exports.getMessageNotify = async (req, res) => {
-      try {
-        const hotelId = new mongoose.Types.ObjectId(req.params.id);
-    
-        const hotelObj = await hotel
-          .findById(hotelId)
-          .populate({
-            path: "notifyMessage",
-            options: { sort: { createdAt: -1 } } // latest first (optional)
-          })
-          .select("notifyMessage");
-    
-        if (!hotelObj) {
-          return res.status(404).send({ msg: "Hotel not found" });
-        }
-    
-        res.status(200).send({
-          msg: "Notification list",
-          notifyMessageArray: hotelObj.notifyMessage // ✅ ARRAY OF OBJECTS
-        });
-    
-      } catch (e) {
-        console.error(e);
-        res.status(500).send({ msg: "Get notification failed" });
-      }
-    };
-    
 
-    exports.deleteNotifcationToken = async (req, res) => {
-      try {
-        const hotelId = req.params.id;
-        const notifyToken = req.body.notifyToken;
-       const deadToken=req.body.deadToken
-        // 1️⃣ Find hotel first
-        const hotelObj = await hotel.findById(hotelId);
-        if (!hotelObj) {
-          return res.status(404).send({ mssg: "Hotel not found" });
-        }
-    
-        if (Array.isArray(deadToken) && deadToken.length > 0) {
+    // 5️⃣ Delete token from DB using $pull
+    const updatedHotel = await hotel.findByIdAndUpdate(
+      hotelId,
+      { $pull: { notificationToken: { token: notifyToken } } },
+      { new: true }
+    );
 
-          await hotel.updateOne(
-            { _id: hotelId },
-            {
-              $pull: {
-                notificationToken: {
-                  token: { $in: deadToken },
-                },
-              },
-            }
-          );
-    
-          // 🔥 AB FINAL LIST NIKAL KE YAHI RETURN KAR DO
-          const finalHotel = await hotel.findById(hotelId).select("notificationToken");
-    
-          return res.status(200).send({
-            mssg: "Dead tokens removed",
-            notifyTokenArray: finalHotel.notificationToken,
-          });
-        }
+    return res.status(200).send({
+      mssg: "Notification token",
+      notifyTokenArray: updatedHotel.notificationToken,
+    });
 
-        // 2️⃣ Find the specific customer inside roomArray
-        const tokenData = hotelObj.notificationToken.find(
-          (item) => item.token.toString() === notifyToken
-        );
-    
-        if (!tokenData) {
-          return res.status(404).send({ mssg: "token not found" });
-        }
-    
-       
-    
-        // 5️⃣ Delete token from DB using $pull
-        const updatedHotel = await hotel.findByIdAndUpdate(
-          hotelId,
-          { $pull: { notificationToken: { token: notifyToken } } },
-          { new: true }
-        );
-    
-        return res.status(200).send({
-          mssg: "Notification token",
-          notifyTokenArray: updatedHotel.notificationToken,
-        });
-    
-      } catch (e) {
-        console.error(e);
-        return res.status(500).send({ mssg: "Delete customer details failed" });
-      }
-    };
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send({ mssg: "Delete customer details failed" });
+  }
+};
 
 
-    exports.createSubscription = async (req, res) => {
-      try {
-        const { planId,amount } = req.body;
-        const hotelId = req.params.id;
-       
-        if (!planId) return res.status(400).json({ msg: "planId missing" });
-        const subscription = await razorpay.subscriptions.create({
-          plan_id: planId,
-          // total_count: 1,
-          total_count: 12,
-          customer_notify: 1,
-          notes: { hotelId,amount}
-        });
-    
-        res.json({
-          msg: "Subscription created",
-          subscription
-        });
-    
-      } catch (err) {
-        console.log(err);   // 🔥 error dikhega
-        res.status(500).json({ error: err.error?.description || err.message });
-      }
-    };
-    
-    // exports.webhookHandler = async (req, res) => {
+exports.createSubscription = async (req, res) => {
+  try {
+    const { planId, amount } = req.body;
+    const hotelId = req.params.id;
 
-    //   const signature = req.headers["x-razorpay-signature"];
-    
-    //   const expected = crypto
-    //     // .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-    //     .createHmac("sha256","MY_HOTEL_SECRET")
-    //     .update(req.body)
-    //     .digest("hex");
-    
-    //   if (signature !== expected) {
-    //     return res.status(400).send("Invalid signature");
-    //   }
-    
-    //   const event = JSON.parse(req.body.toString());
-    
-    //   if (event.event === "subscription.activated") {
-    //     const s = event.payload.subscription.entity;
-    
-    //     await Subscription.findOneAndUpdate(
-    //       { razorpaySubId: s.id },
-    //       {
-    //         hotelId: s.notes.hotelId,
-    //         planId: s.plan_id,
-    //         status: s.status,
-    //         startDate: new Date(s.start_at * 1000),
-    //         endDate: new Date(s.end_at * 1000)
-    //       },
-    //       { upsert: true }
-    //     );
-    //   }
-    
-    //   res.json({ status: "ok" });
-    // };
+    if (!planId) return res.status(400).json({ msg: "planId missing" });
+    const subscription = await razorpay.subscriptions.create({
+      plan_id: planId,
+      // total_count: 1,
+      total_count: 12,
+      customer_notify: 1,
+      notes: { hotelId, amount }
+    });
+
+    res.json({
+      msg: "Subscription created",
+      subscription
+    });
+
+  } catch (err) {
+    console.log(err);   // 🔥 error dikhega
+    res.status(500).json({ error: err.error?.description || err.message });
+  }
+};
+
+// exports.webhookHandler = async (req, res) => {
+
+//   const signature = req.headers["x-razorpay-signature"];
+
+//   const expected = crypto
+//     // .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+//     .createHmac("sha256","MY_HOTEL_SECRET")
+//     .update(req.body)
+//     .digest("hex");
+
+//   if (signature !== expected) {
+//     return res.status(400).send("Invalid signature");
+//   }
+
+//   const event = JSON.parse(req.body.toString());
+
+//   if (event.event === "subscription.activated") {
+//     const s = event.payload.subscription.entity;
+
+//     await Subscription.findOneAndUpdate(
+//       { razorpaySubId: s.id },
+//       {
+//         hotelId: s.notes.hotelId,
+//         planId: s.plan_id,
+//         status: s.status,
+//         startDate: new Date(s.start_at * 1000),
+//         endDate: new Date(s.end_at * 1000)
+//       },
+//       { upsert: true }
+//     );
+//   }
+
+//   res.json({ status: "ok" });
+// };
 //     exports.webhookHandler = async (req, res) => {
 //       try {
-    
+
 //         const signature = req.headers["x-razorpay-signature"];
-    
+
 //         const expected = crypto
 //           .createHmac("sha256", "MY_HOTEL_SECRET")
 //           // .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
 //           .update(req.body)
 //           .digest("hex");
-    
+
 //         if (signature !== expected) {
 //           console.log("❌ Invalid Signature");
 //           return res.status(400).send("Invalid signature");
 //         }
-    
+
 //         const event = JSON.parse(req.body.toString());
-    
+
 //         console.log("🚀 EVENT RECEIVED ===>", event.event);
-    
+
 //         /* ================================
 //            🎯 STEP-1 — Subscription Save
 //         ==================================*/
@@ -3121,10 +3600,10 @@ if (Array.isArray(hotelObj.roomArray)) {
 //             },
 //             { upsert: true }
 //           );
-    
+
 //           console.log("✅ Subscription Saved / Updated");
 //         }
-      
+
 // /* ====================================================
 //        🔁 2️⃣ SUBSCRIPTION RENEWED (Weekly / Monthly charge)
 //     ==================================================== */
@@ -3144,9 +3623,9 @@ if (Array.isArray(hotelObj.roomArray)) {
 //     // }
 //     if (event.event === "subscription.charged") {
 //       const s = event.payload.subscription.entity;
-    
+
 //       const sub = await Subscription.findOne({ razorpaySubId: s.id });
-    
+
 //       // 🛑 SAFETY GUARD:
 //       // Agar subscription system / time se expire ho chuki hai
 //       // to webhook usko revive nahi kar sakta
@@ -3156,7 +3635,7 @@ if (Array.isArray(hotelObj.roomArray)) {
 //         );
 //         return res.json({ status: "ignored" });
 //       }
-    
+
 //       await Subscription.findOneAndUpdate(
 //         { razorpaySubId: s.id },
 //         {
@@ -3165,7 +3644,7 @@ if (Array.isArray(hotelObj.roomArray)) {
 //           endDate: new Date(s.current_end * 1000),
 //         }
 //       );
-    
+
 //       console.log("🔄 Subscription renewed – new expiry saved");
 //     }
 //   /* ====================================================
@@ -3207,7 +3686,7 @@ if (Array.isArray(hotelObj.roomArray)) {
 //         ==================================*/
 //         if (event.event === "payment.captured") {
 //           const p = event.payload.payment.entity;
-    
+
 //           console.log("💰 PAYMENT OBJECT ===>");
 //           console.log(p);
 //           const rzpInvoice = await razorpay.invoices.fetch(p.invoice_id);
@@ -3227,7 +3706,7 @@ if (Array.isArray(hotelObj.roomArray)) {
 //                 currency: p.currency,
 //                 date: new Date()
 //               });
-    
+
 //               console.log("🎉 Invoice Created ===>");
 //               console.log(invoice);
 //             }
@@ -3236,9 +3715,9 @@ if (Array.isArray(hotelObj.roomArray)) {
 //             console.log(err);
 //           }
 //         }
-    
+
 //         return res.json({ status: "ok" });
-    
+
 //       } catch (err) {
 //         console.log("💥 WEBHOOK ERROR ===>");
 //         console.log(err);
@@ -3273,7 +3752,7 @@ exports.webhookHandler = async (req, res) => {
 
     const expected = crypto
       // .createHmac("sha256", "MY_HOTEL_SECRET")
-    .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
+      .createHmac("sha256", "MY_LIVE_HOTEL_SECRET") // this live secret comes from webhook section in a dashboard and click on ngrok url then edit inside this secret is there
       .update(req.body)
       .digest("hex");
 
@@ -3296,7 +3775,7 @@ exports.webhookHandler = async (req, res) => {
         razorpaySubId: s.id,
         startDate: new Date(s.current_start * 1000),
       });
-    
+
       if (!existing) {
         await Subscription.create({
           hotelId: s.notes?.hotelId || null,
@@ -3362,7 +3841,7 @@ exports.webhookHandler = async (req, res) => {
         razorpaySubId: s.id,
         status: "active",
       });
-    
+
       if (sub) {
         // ✅ yaha email bhejo
         await sendAutoPayOffEmail({
@@ -3398,56 +3877,56 @@ exports.webhookHandler = async (req, res) => {
     return res.status(500).send("Webhook error");
   }
 };
-     
-    //razorpay real fetch sync subscription data 
-    // (async () => {
-    //   try {
-    //     console.log("🔄 Syncing Razorpay → MongoDB (SAFE MODE)");
-    
-    //     const now = Date.now();
-    
-    //     const all = await razorpay.subscriptions.all({ count: 100 });
-    
-    //     for (const s of all.items) {
-    //       const expiry = s.current_end * 1000;
-    
-    //       let status;
-    
-    //       // 🔥 REAL SaaS logic (not Razorpay status)
-    //       if (s.status === "cancelled") {
-    //         status = "cancelled";
-    //       } else if (expiry > now) {
-    //         status = "active";      // service period still running
-    //       } else {
-    //         status = "expired";    // service period finished
-    //       }
-    
-    //       await Subscription.findOneAndUpdate(
-    //         { razorpaySubId: s.id },
-    //         {
-    //           status,
-    //           startDate: new Date(s.current_start * 1000),
-    //           endDate: new Date(expiry),
-    //         }
-    //       );
-    
-    //       console.log(`✔ ${s.id} → ${status}`);
-    //     }
-    
-    //     console.log("✅ Razorpay → MongoDB sync completed safely");
-    //     process.exit();
-    //   } catch (err) {
-    //     console.error("❌ Sync failed:", err);
-    //     process.exit(1);
-    //   }
-    // })();
 
-    exports.getExpiredSubscription = async (req, res) => {
-      try{
-     const hotelId=req.params.id
+//razorpay real fetch sync subscription data 
+// (async () => {
+//   try {
+//     console.log("🔄 Syncing Razorpay → MongoDB (SAFE MODE)");
+
+//     const now = Date.now();
+
+//     const all = await razorpay.subscriptions.all({ count: 100 });
+
+//     for (const s of all.items) {
+//       const expiry = s.current_end * 1000;
+
+//       let status;
+
+//       // 🔥 REAL SaaS logic (not Razorpay status)
+//       if (s.status === "cancelled") {
+//         status = "cancelled";
+//       } else if (expiry > now) {
+//         status = "active";      // service period still running
+//       } else {
+//         status = "expired";    // service period finished
+//       }
+
+//       await Subscription.findOneAndUpdate(
+//         { razorpaySubId: s.id },
+//         {
+//           status,
+//           startDate: new Date(s.current_start * 1000),
+//           endDate: new Date(expiry),
+//         }
+//       );
+
+//       console.log(`✔ ${s.id} → ${status}`);
+//     }
+
+//     console.log("✅ Razorpay → MongoDB sync completed safely");
+//     process.exit();
+//   } catch (err) {
+//     console.error("❌ Sync failed:", err);
+//     process.exit(1);
+//   }
+// })();
+
+exports.getExpiredSubscription = async (req, res) => {
+  try {
+    const hotelId = req.params.id
     //  console.log('hotelid',hotelId)
-     const allSubscription=await Subscription.find({ hotelId: hotelId,status: "expired"})
-     const formatDate = (date) => {
+    const allSubscription = await Subscription.find({ hotelId: hotelId, status: "expired" })
+    const formatDate = (date) => {
       const d = new Date(date);
       const day = d.getDate();
       const month = d.toLocaleString("en-US", { month: "short" });
@@ -3459,502 +3938,502 @@ exports.webhookHandler = async (req, res) => {
       startDate: formatDate(sub.startDate),
       endDate: formatDate(sub.endDate),
     }));
- 
-     res.status(200).send({
+
+    res.status(200).send({
       msg: "all subscription",
-      subscriptionArray:formattedSubscriptions // ✅ ARRAY OF OBJECTS
+      subscriptionArray: formattedSubscriptions // ✅ ARRAY OF OBJECTS
     });
-      }catch(err){
-        console.log(err);   // 🔥 error dikhega
-        res.status(500).json({ error:err.message });
-      }
+  } catch (err) {
+    console.log(err);   // 🔥 error dikhega
+    res.status(500).json({ error: err.message });
+  }
+}
+
+
+// exports.getActiveSubscription = async (req, res) => {
+//   try{
+//  const hotelId=req.params.id
+//  const activeSubscription=await Subscription.findOne({ hotelId: hotelId,status: "active"})
+//  if (!activeSubscription) {
+//   return res.status(200).json({
+//     msg: "No active subscription",
+//     activeSubscription: null,
+//   });
+// }
+
+//  const formatDate = (date) => {
+//   const d = new Date(date);
+//   const day = d.getDate();
+//   const month = d.toLocaleString("en-US", { month: "short" });
+//   const year = d.getFullYear();
+//   return `${day} ${month} ${year}`;
+// };
+// const formattedActiveSubscription = {
+//   ...activeSubscription._doc,
+//   startDate: formatDate(activeSubscription.startDate),
+//   endDate: formatDate(activeSubscription.endDate),
+// };
+
+
+//  res.status(200).send({
+//   msg: "all subscription",
+//   activeSubscription:formattedActiveSubscription // ✅ ARRAY OF OBJECTS
+// });
+//   }catch(err){
+//     console.log(err);   // 🔥 error dikhega
+//     res.status(500).json({ error:err.message });
+//   }
+// }
+exports.getActiveSubscription = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+
+    let activeSubscription = await Subscription.findOne({
+      hotelId: hotelId,
+      status: "active",
+    });
+
+    // ✅ No active subscription
+    if (!activeSubscription) {
+      return res.status(200).json({
+        msg: "No active subscription",
+        activeSubscription: null,
+      });
     }
 
+    const now = new Date();
+    const endDate = new Date(activeSubscription.endDate);
 
-    // exports.getActiveSubscription = async (req, res) => {
-    //   try{
-    //  const hotelId=req.params.id
-    //  const activeSubscription=await Subscription.findOne({ hotelId: hotelId,status: "active"})
-    //  if (!activeSubscription) {
-    //   return res.status(200).json({
-    //     msg: "No active subscription",
-    //     activeSubscription: null,
-    //   });
-    // }
+    // ✅ CORE LOGIC: expiry check
+    if (now > endDate) {
+      activeSubscription.status = "expired";
+      await activeSubscription.save();
 
-    //  const formatDate = (date) => {
-    //   const d = new Date(date);
-    //   const day = d.getDate();
-    //   const month = d.toLocaleString("en-US", { month: "short" });
-    //   const year = d.getFullYear();
-    //   return `${day} ${month} ${year}`;
-    // };
-    // const formattedActiveSubscription = {
-    //   ...activeSubscription._doc,
-    //   startDate: formatDate(activeSubscription.startDate),
-    //   endDate: formatDate(activeSubscription.endDate),
-    // };
+      return res.status(200).json({
+        msg: "Subscription expired",
+        activeSubscription: null,
+      });
+    }
 
- 
-    //  res.status(200).send({
-    //   msg: "all subscription",
-    //   activeSubscription:formattedActiveSubscription // ✅ ARRAY OF OBJECTS
-    // });
-    //   }catch(err){
-    //     console.log(err);   // 🔥 error dikhega
-    //     res.status(500).json({ error:err.message });
-    //   }
-    // }
-    exports.getActiveSubscription = async (req, res) => {
-      try {
-        const hotelId = req.params.id;
-    
-        let activeSubscription = await Subscription.findOne({
-          hotelId: hotelId,
-          status: "active",
-        });
-    
-        // ✅ No active subscription
-        if (!activeSubscription) {
-          return res.status(200).json({
-            msg: "No active subscription",
-            activeSubscription: null,
-          });
-        }
-    
-        const now = new Date();
-        const endDate = new Date(activeSubscription.endDate);
-    
-        // ✅ CORE LOGIC: expiry check
-        if (now > endDate) {
-          activeSubscription.status = "expired";
-          await activeSubscription.save();
-    
-          return res.status(200).json({
-            msg: "Subscription expired",
-            activeSubscription: null,
-          });
-        }
-    
-        // ✅ Date formatting (UI purpose only)
-        const formatDate = (date) => {
-          const d = new Date(date);
-          const day = d.getDate();
-          const month = d.toLocaleString("en-US", { month: "short" });
-          const year = d.getFullYear();
-          return `${day} ${month} ${year}`;
-        };
-    
-        const formattedActiveSubscription = {
-          ...activeSubscription._doc,
-          startDate: formatDate(activeSubscription.startDate),
-          endDate: formatDate(activeSubscription.endDate),
-        };
-    
-        return res.status(200).json({
-          msg: "Active subscription",
-          activeSubscription: formattedActiveSubscription,
-        });
-    
-      } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-      }
+    // ✅ Date formatting (UI purpose only)
+    const formatDate = (date) => {
+      const d = new Date(date);
+      const day = d.getDate();
+      const month = d.toLocaleString("en-US", { month: "short" });
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
     };
-    
 
-    exports.onAppOpen = async (req, res) => {
-      try {
-        const hotelId = req.params.id;
-        const hotelObj = await hotel.findById(hotelId);
-    
-        if (!hotelObj) {
-          return res.status(404).json({ msg: "Hotel not found" });
+    const formattedActiveSubscription = {
+      ...activeSubscription._doc,
+      startDate: formatDate(activeSubscription.startDate),
+      endDate: formatDate(activeSubscription.endDate),
+    };
+
+    return res.status(200).json({
+      msg: "Active subscription",
+      activeSubscription: formattedActiveSubscription,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+exports.onAppOpen = async (req, res) => {
+  try {
+    const hotelId = req.params.id;
+    const hotelObj = await hotel.findById(hotelId);
+
+    if (!hotelObj) {
+      return res.status(404).json({ msg: "Hotel not found" });
+    }
+
+    const now = new Date();
+
+    // 🔹 CASE 1: Trial already exists
+    if (hotelObj.freeSubscription?.endDate) {
+      const endDate = new Date(hotelObj.freeSubscription.endDate);
+
+      // 🔴 EXPIRED (real-time check)
+      if (now >= endDate) {
+        if (hotelObj.freeSubscription.status !== "ended") {
+          hotelObj.freeSubscription.status = "ended";
+          hotelObj.freeSubscription.plan = "expired";
+          await hotelObj.save();
         }
-    
-        const now = new Date();
-    
-        // 🔹 CASE 1: Trial already exists
-        if (hotelObj.freeSubscription?.endDate) {
-          const endDate = new Date(hotelObj.freeSubscription.endDate);
-    
-          // 🔴 EXPIRED (real-time check)
-          if (now >= endDate) {
-            if (hotelObj.freeSubscription.status !== "ended") {
-              hotelObj.freeSubscription.status = "ended";
-              hotelObj.freeSubscription.plan = "expired";
-              await hotelObj.save();
-            }
-    
-            return res.json({
-              msg: "Free trial ended",
-              freeSubscription: hotelObj.freeSubscription
-            });
-          }
-    
-          // 🟢 ACTIVE
-          if (hotelObj.freeSubscription.status !== "trial") {
-            hotelObj.freeSubscription.status = "trial";
-            hotelObj.freeSubscription.plan = "free";
-            await hotelObj.save();
-          }
-    
-          return res.json({
-            msg: "Free trial active",
-            freeSubscription: hotelObj.freeSubscription
-          });
-        }
-    
-        // 🔹 CASE 2: START FREE TRIAL (FIRST TIME ONLY)
-        const start = new Date();
-    
-        // End = 7th day midnight (IST-safe)
-        const end = new Date(start);
-        end.setUTCDate(end.getUTCDate() + 7);
-        end.setUTCHours(18, 30, 0, 0); 
-    
-        hotelObj.freeSubscription = {
-          status: "trial",
-          plan: "free",
-          startDate: start,
-          endDate: end
-        };
-    
-        await hotelObj.save();
-    
+
         return res.json({
-          msg: "Free trial started",
+          msg: "Free trial ended",
           freeSubscription: hotelObj.freeSubscription
         });
-    
-      } catch (err) {
-        res.status(500).json({ error: err.message });
       }
+
+      // 🟢 ACTIVE
+      if (hotelObj.freeSubscription.status !== "trial") {
+        hotelObj.freeSubscription.status = "trial";
+        hotelObj.freeSubscription.plan = "free";
+        await hotelObj.save();
+      }
+
+      return res.json({
+        msg: "Free trial active",
+        freeSubscription: hotelObj.freeSubscription
+      });
+    }
+
+    // 🔹 CASE 2: START FREE TRIAL (FIRST TIME ONLY)
+    const start = new Date();
+
+    // End = 7th day midnight (IST-safe)
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 7);
+    end.setUTCHours(18, 30, 0, 0);
+
+    hotelObj.freeSubscription = {
+      status: "trial",
+      plan: "free",
+      startDate: start,
+      endDate: end
     };
-    
-    
-    // exports.onAppOpen = async (req, res) => {
-    //   try {
-    //     const hotelId = req.params.id;
-    //     const hotelObj = await hotel.findById(hotelId);
-    
-    //     if (!hotelObj) {
-    //       return res.status(404).json({ msg: "Hotel not found" });
-    //     }
-    
-    //     const now = new Date(); // 🔥 current exact time
-    
-    //     if (hotelObj.freeSubscription?.endDate) {
-    //       const endDate = new Date(hotelObj.freeSubscription.endDate);
-    
-    //       // 🔴 EXPIRE (only when actual time passed)
-    //       if (now >= endDate) {
-    //         if (hotelObj.freeSubscription.status !== "ended") {
-    //           hotelObj.freeSubscription.status = "ended";
-    //           hotelObj.freeSubscription.plan = "expired";
-    //           await hotelObj.save();
-    //         }
-    
-    //         return res.json({
-    //           msg: "Free trial ended",
-    //           freeSubscription: hotelObj.freeSubscription
-    //         });
-    //       }
-    
-    //       // 🟢 ACTIVE (still valid)
-    //       if (now < endDate) {
-    //         if (hotelObj.freeSubscription.status !== "trial") {
-    //           hotelObj.freeSubscription.status = "trial";
-    //           hotelObj.freeSubscription.plan = "free";
-    //           await hotelObj.save();
-    //         }
-    
-    //         return res.json({
-    //           msg: "Free trial active",
-    //           freeSubscription: hotelObj.freeSubscription
-    //         });
-    //       }
-    //     }
-    
-    //     // 🆕 START TRIAL (first time only)
-    //     const start = new Date();
-    //     const end = new Date();
-    //     end.setDate(end.getDate() + 7);
-    
-    //     hotelObj.freeSubscription = {
-    //       status: "trial",
-    //       plan: "free",
-    //       startDate: start,
-    //       endDate: end
-    //     };
-    
-    //     await hotelObj.save();
-    
-    //     res.json({
-    //       msg: "Free trial started",
-    //       freeSubscription: hotelObj.freeSubscription
-    //     });
-    
-    //   } catch (err) {
-    //     res.status(500).json({ error: err.message });
-    //   }
-    // };
-    
-    
-    exports.getFreeTrialSubscription = async (req,res)=>{
-      try{
-        const hotelId=req.params.id
-        const hotels = await hotel.findById(hotelId);
-        if(!hotels) return res.status(404).json({msg:"Hotel not found"});
-    
-        const now = new Date();
 
-        const diff = new Date(hotels.freeSubscription.endDate) - now;
-    
-        res.json({
-          status: hotels.freeSubscription.status,
-          plan: hotels.freeSubscription.plan,
-          startDate: hotels.freeSubscription.startDate,
-          endDate: hotels.freeSubscription.endDate,
-          remainingMs: diff > 0 ? diff : 0
-        });
-    
-      }catch(err){
-        res.status(500).json({error:err.message});
-      }
-    };
-    
+    await hotelObj.save();
 
-    exports.getCheckOutMessage=async(req,res)=>{
-      try{
-      const hotelId=req.params.id
-      const getCustomerDetails=await hotel.findOne({_id:hotelId})
-      const detailsArray=getCustomerDetails.roomArray
-      res.status(200).send({mssg:'get customers',getCustomerDetailsArray:getCustomerDetails.roomArray})
-      }catch(e){
-        console.error(e);
-        res.status(401).send({ mssg: 'get customer details failed' });
-      }
+    return res.json({
+      msg: "Free trial started",
+      freeSubscription: hotelObj.freeSubscription
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// exports.onAppOpen = async (req, res) => {
+//   try {
+//     const hotelId = req.params.id;
+//     const hotelObj = await hotel.findById(hotelId);
+
+//     if (!hotelObj) {
+//       return res.status(404).json({ msg: "Hotel not found" });
+//     }
+
+//     const now = new Date(); // 🔥 current exact time
+
+//     if (hotelObj.freeSubscription?.endDate) {
+//       const endDate = new Date(hotelObj.freeSubscription.endDate);
+
+//       // 🔴 EXPIRE (only when actual time passed)
+//       if (now >= endDate) {
+//         if (hotelObj.freeSubscription.status !== "ended") {
+//           hotelObj.freeSubscription.status = "ended";
+//           hotelObj.freeSubscription.plan = "expired";
+//           await hotelObj.save();
+//         }
+
+//         return res.json({
+//           msg: "Free trial ended",
+//           freeSubscription: hotelObj.freeSubscription
+//         });
+//       }
+
+//       // 🟢 ACTIVE (still valid)
+//       if (now < endDate) {
+//         if (hotelObj.freeSubscription.status !== "trial") {
+//           hotelObj.freeSubscription.status = "trial";
+//           hotelObj.freeSubscription.plan = "free";
+//           await hotelObj.save();
+//         }
+
+//         return res.json({
+//           msg: "Free trial active",
+//           freeSubscription: hotelObj.freeSubscription
+//         });
+//       }
+//     }
+
+//     // 🆕 START TRIAL (first time only)
+//     const start = new Date();
+//     const end = new Date();
+//     end.setDate(end.getDate() + 7);
+
+//     hotelObj.freeSubscription = {
+//       status: "trial",
+//       plan: "free",
+//       startDate: start,
+//       endDate: end
+//     };
+
+//     await hotelObj.save();
+
+//     res.json({
+//       msg: "Free trial started",
+//       freeSubscription: hotelObj.freeSubscription
+//     });
+
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+
+exports.getFreeTrialSubscription = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const hotels = await hotel.findById(hotelId);
+    if (!hotels) return res.status(404).json({ msg: "Hotel not found" });
+
+    const now = new Date();
+
+    const diff = new Date(hotels.freeSubscription.endDate) - now;
+
+    res.json({
+      status: hotels.freeSubscription.status,
+      plan: hotels.freeSubscription.plan,
+      startDate: hotels.freeSubscription.startDate,
+      endDate: hotels.freeSubscription.endDate,
+      remainingMs: diff > 0 ? diff : 0
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+exports.getCheckOutMessage = async (req, res) => {
+  try {
+    const hotelId = req.params.id
+    const getCustomerDetails = await hotel.findOne({ _id: hotelId })
+    const detailsArray = getCustomerDetails.roomArray
+    res.status(200).send({ mssg: 'get customers', getCustomerDetailsArray: getCustomerDetails.roomArray })
+  } catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get customer details failed' });
+  }
+}
+
+exports.getAllHotel = async (req, res) => {
+  try {
+    const Id = req.params.id
+    const getAllHotelDetails = await hotel.find()
+    res.status(200).send({ mssg: 'get all hotels', getAllHotelArray: getAllHotelDetails })
+  }
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get All details failed' });
+  }
+}
+
+exports.deleteAdminStaffOwner = async (req, res) => {
+  try {
+
+    const hotelId = req.params.id;
+    const staffId = req.body.staffId;
+    const phone = req.body.phone;
+    const message = req.body.message;
+
+    const hotelObj = await hotel.findById(hotelId);
+
+    if (!hotelObj) {
+      return res.status(404).send({ mssg: "Hotel not found" });
+    }
+
+    // ================= STAFF DELETE =================
+    if (message === "staff") {
+
+      const staffObj = Object.fromEntries(hotelObj.staff);
+
+      const staffKey = Object.keys(staffObj).find(
+        key => staffObj[key]._id.toString() === staffId
+      );
+
+      if (!staffKey) {
+        return res.status(404).send({ mssg: "Staff not found" });
       }
 
-      exports.getAllHotel = async (req, res) => {
-        try{
-       const Id=req.params.id
-       const getAllHotelDetails=await hotel.find()
-       res.status(200).send({mssg:'get all hotels',getAllHotelArray:getAllHotelDetails})
+      const imagePublicId = staffObj[staffKey].imagePublicId;
+
+      if (imagePublicId) {
+        await cloudinary.uploader.destroy(imagePublicId);
+      }
+
+      delete staffObj[staffKey];
+
+      hotelObj.staff = new Map(Object.entries(staffObj));
+
+      await hotelObj.save();
+
+      return res.status(200).send({
+        mssg: "Staff deleted successfully",
+        deletedStaffId: staffId
+      });
+    }
+
+    // ================= OWNER DELETE =================
+    if (message === "owner") {
+
+      const ownerKeys = ["owner1", "owner2", "owner3", "owner4"];
+
+      const ownerKey = ownerKeys.find(
+        key => hotelObj[key]?.phone === phone
+      );
+
+      if (!ownerKey) {
+        return res.status(404).send({ mssg: "Owner not found" });
+      }
+      //  console.log('owners key',ownerKey)
+      const imagePublicId = hotelObj[ownerKey].imagePublicId;
+
+      if (imagePublicId) {
+        await cloudinary.uploader.destroy(imagePublicId);
+      }
+
+      await hotel.updateOne(
+        { _id: hotelId },
+        { $unset: { [ownerKey]: "" } }
+      );
+
+      return res.status(200).send({
+        mssg: "Owner deleted successfully",
+        deletedOwnerPhone: phone
+      });
+    }
+
+  } catch (e) {
+
+    console.error(e);
+
+    res.status(500).send({
+      mssg: "Delete failed",
+      error: e.message
+    });
+
+  }
+};
+
+exports.getAllName = async (req, res) => {
+  try {
+    const data = (await hotel.findById(req.params.id)).toObject();
+
+    let namesArray = [];
+
+    // 👉 Owners
+    for (let key in data) {
+      if (key.startsWith("owner")) {
+        if (data[key]?.name) {
+          namesArray.push(data[key].name);
         }
-      catch(e){
-        console.error(e);
-        res.status(401).send({ mssg: 'get All details failed' });
       }
     }
 
-    exports.deleteAdminStaffOwner = async (req, res) => {
-      try {
-    
-        const hotelId = req.params.id;
-        const staffId = req.body.staffId;
-        const phone = req.body.phone;
-        const message = req.body.message;
-    
-        const hotelObj = await hotel.findById(hotelId);
-    
-        if (!hotelObj) {
-          return res.status(404).send({ mssg: "Hotel not found" });
+    // 👉 Staff (Map hai)
+    if (data.staff) {
+      data.staff.forEach((value) => {
+        if (value?.name) {
+          namesArray.push(value.name);
         }
-    
-        // ================= STAFF DELETE =================
-        if (message === "staff") {
-    
-          const staffObj = Object.fromEntries(hotelObj.staff);
-    
-          const staffKey = Object.keys(staffObj).find(
-            key => staffObj[key]._id.toString() === staffId
-          );
-    
-          if (!staffKey) {
-            return res.status(404).send({ mssg: "Staff not found" });
-          }
-    
-          const imagePublicId = staffObj[staffKey].imagePublicId;
-    
-          if (imagePublicId) {
-            await cloudinary.uploader.destroy(imagePublicId);
-          }
-    
-          delete staffObj[staffKey];
-    
-          hotelObj.staff = new Map(Object.entries(staffObj));
-    
-          await hotelObj.save();
-    
-          return res.status(200).send({
-            mssg: "Staff deleted successfully",
-            deletedStaffId: staffId
-          });
-        }
-    
-        // ================= OWNER DELETE =================
-        if (message === "owner") {
-    
-          const ownerKeys = ["owner1", "owner2", "owner3", "owner4"];
-    
-          const ownerKey = ownerKeys.find(
-            key => hotelObj[key]?.phone === phone
-          );
-    
-          if (!ownerKey) {
-            return res.status(404).send({ mssg: "Owner not found" });
-          }
-          //  console.log('owners key',ownerKey)
-          const imagePublicId = hotelObj[ownerKey].imagePublicId;
-    
-          if (imagePublicId) {
-            await cloudinary.uploader.destroy(imagePublicId);
-          }
-    
-          await hotel.updateOne(
-            { _id: hotelId },
-            { $unset: { [ownerKey]: "" } }
-          );
-        
-          return res.status(200).send({
-            mssg: "Owner deleted successfully",
-            deletedOwnerPhone: phone
-          });
-        }
-    
-      } catch (e) {
-    
-        console.error(e);
-    
-        res.status(500).send({
-          mssg: "Delete failed",
-          error: e.message
-        });
-    
-      }
-    };
+      });
+    }
 
-    exports.getAllName = async (req, res) => {
-      try {
-        const data = (await hotel.findById(req.params.id)).toObject();
-    
-        let namesArray = [];
-    
-        // 👉 Owners
-        for (let key in data) {
-          if (key.startsWith("owner")) {
-            if (data[key]?.name) {
-              namesArray.push(data[key].name);
-            }
-          }
+    res.send({ mssg: "get all names", names: namesArray });
+
+  } catch (e) {
+    res.send({ mssg: "error" });
+  }
+};
+exports.deleteName = async (req, res) => {
+  try {
+    const Id = req.params.id;
+    const getAllHotelDetails = await hotel.findById({ _id: Id });
+    const deleteName = req.body.name
+    let namesArray = [];
+
+    for (let key in getAllHotelDetails) {
+      if (key.startsWith("owner")) {
+        if (getAllHotelDetails[key]?.name) {
+          namesArray.push(getAllHotelDetails[key].name);
         }
-    
-        // 👉 Staff (Map hai)
-        if (data.staff) {
-          data.staff.forEach((value) => {
-            if (value?.name) {
-              namesArray.push(value.name);
-            }
-          });
-        }
-    
-        res.send({mssg: "get all names", names: namesArray });
-    
-      } catch (e) {
-        res.send({ mssg: "error" });
-      }
-    };
-    exports.deleteName = async (req, res) => {
-      try {
-        const Id = req.params.id;
-        const getAllHotelDetails = await hotel.findById({ _id: Id });
-        const deleteName=req.body.name
-        let namesArray = [];
-    
-        for (let key in getAllHotelDetails) {
-          if (key.startsWith("owner")) {
-            if (getAllHotelDetails[key]?.name) {
-              namesArray.push(getAllHotelDetails[key].name);
-            }
-          }
-        }
-    
-        // 👉 Staff (Map hai)
-        if (getAllHotelDetails.staff) {
-          getAllHotelDetails.staff.forEach((value) => {
-            if (value?.name) {
-              namesArray.push(value.name);
-            }
-          });
-        }
-      
-        let finalName=namesArray.filter((name)=>name!==deleteName)
-        res.status(200).send({
-          mssg: "get all names",
-          names: finalName,
-        });   
-      }
-      catch (e) {
-        console.error(e);
-        res.status(401).send({ mssg: 'get All details failed' });
       }
     }
 
-    exports.getAllHotelName = async (req, res) => {
-      try {
-    const Id=req.params.id
-     const hotelObj=await hotel.find()
-     let hotelNameArray=[]
-     hotelObj.map((hotel)=>{
+    // 👉 Staff (Map hai)
+    if (getAllHotelDetails.staff) {
+      getAllHotelDetails.staff.forEach((value) => {
+        if (value?.name) {
+          namesArray.push(value.name);
+        }
+      });
+    }
+
+    let finalName = namesArray.filter((name) => name !== deleteName)
+    res.status(200).send({
+      mssg: "get all names",
+      names: finalName,
+    });
+  }
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get All details failed' });
+  }
+}
+
+exports.getAllHotelName = async (req, res) => {
+  try {
+    const Id = req.params.id
+    const hotelObj = await hotel.find()
+    let hotelNameArray = []
+    hotelObj.map((hotel) => {
       hotelNameArray.push(hotel.hotelName)
-     })
-    
-     
-        res.send({mssg: "get all hotel names", hotelNames:hotelNameArray });
-    
-      } catch (e) {
-        res.send({ mssg: "error" });
-      }
-    };
+    })
 
-    exports.deleteHotelName = async (req, res) => {
-      try {
-        const Id = req.params.id;
-        const getAllHotelDetails = await hotel.findById({ _id: Id });
-        const hotelObj=await hotel.find()
-        let hotelNameArray=[]
-        hotelObj.map((hotel)=>{
-         hotelNameArray.push(hotel.hotelName)
-        })
-       hotelNameArray=hotelNameArray.filter((name)=>name!==getAllHotelDetails.hotelName)
-       res.send({mssg: "get all hotel names", hotelNames:hotelNameArray });
-      }
-      catch (e) {
-        console.error(e);
-        res.status(401).send({ mssg: 'get All details failed' });
-      }
-    }
 
-    exports.sendEmail = async (req, res) => {
-      try {
-        const Id = req.params.id;
-        const name = req.body.name;
-        const phone = req.body.phoneNumber;
-        const email = req.body.email;
-        const message = req.body.message;
-        const hotelName = req.body.hotelName;
-    
-        // ❌ Nodemailer hata diya
-        // ✅ Resend use kar rahe
-    
-        const response = await resend.emails.send({
-          from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
-          to: "hoteloptix@gmail.com",
-          subject: `New Contact Request from ${hotelName}`,
-    
-          html: `
+    res.send({ mssg: "get all hotel names", hotelNames: hotelNameArray });
+
+  } catch (e) {
+    res.send({ mssg: "error" });
+  }
+};
+
+exports.deleteHotelName = async (req, res) => {
+  try {
+    const Id = req.params.id;
+    const getAllHotelDetails = await hotel.findById({ _id: Id });
+    const hotelObj = await hotel.find()
+    let hotelNameArray = []
+    hotelObj.map((hotel) => {
+      hotelNameArray.push(hotel.hotelName)
+    })
+    hotelNameArray = hotelNameArray.filter((name) => name !== getAllHotelDetails.hotelName)
+    res.send({ mssg: "get all hotel names", hotelNames: hotelNameArray });
+  }
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get All details failed' });
+  }
+}
+
+exports.sendEmail = async (req, res) => {
+  try {
+    const Id = req.params.id;
+    const name = req.body.name;
+    const phone = req.body.phoneNumber;
+    const email = req.body.email;
+    const message = req.body.message;
+    const hotelName = req.body.hotelName;
+
+    // ❌ Nodemailer hata diya
+    // ✅ Resend use kar rahe
+
+    const response = await resend.emails.send({
+      from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
+      to: "hoteloptix@gmail.com",
+      subject: `New Contact Request from ${hotelName}`,
+
+      html: `
         <div style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
           
           <div style="max-width:750px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.1);">
@@ -4008,37 +4487,37 @@ exports.webhookHandler = async (req, res) => {
     
         </div>
         `,
-        });
-    
-        res.status(200).send({
-          mssg: "Email sent successfully",
-          data: response,
-        });
-    
-      } catch (e) {
-        console.error(e);
-        res.status(500).send({ mssg: "Email send failed" });
-      }
-    };
+    });
 
-    exports.replyEmail = async (req, res) => {
-      try {
-        const Id = req.params.id;
-        const userEmail = req.body.email;   // 👈 user ko reply
-        const replyMessage = req.body.message;
-        const name = req.body.name;
-        const hotelName = req.body.hotelName;
-    
-        // ❌ Nodemailer removed
-        // ✅ Resend used
-    
-        const response = await resend.emails.send({
-          from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
-          to: userEmail,
-          bcc: "hoteloptix@gmail.com",
-          subject: "Reply from HotelOptix Support",
-    
-          html: `
+    res.status(200).send({
+      mssg: "Email sent successfully",
+      data: response,
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "Email send failed" });
+  }
+};
+
+exports.replyEmail = async (req, res) => {
+  try {
+    const Id = req.params.id;
+    const userEmail = req.body.email;   // 👈 user ko reply
+    const replyMessage = req.body.message;
+    const name = req.body.name;
+    const hotelName = req.body.hotelName;
+
+    // ❌ Nodemailer removed
+    // ✅ Resend used
+
+    const response = await resend.emails.send({
+      from: "HotelOptix Support <onboarding@resend.dev>", // 👈 fixed
+      to: userEmail,
+      bcc: "hoteloptix@gmail.com",
+      subject: "Reply from HotelOptix Support",
+
+      html: `
           <div style="font-family: Arial, sans-serif; background:#f3f4f6; padding:20px;">
             
             <div style="max-width:700px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden;">
@@ -4073,94 +4552,94 @@ exports.webhookHandler = async (req, res) => {
     
           </div>
           `,
-        });
-    
-        res.status(200).send({
-          mssg: "Reply sent successfully",
-          data: response,
-        });
-    
-      } catch (e) {
-        console.error(e);
-        res.status(500).send({ mssg: "Reply failed" });
-      }
-    };
+    });
 
-    exports.accessAmount = async (req, res) => {
-    try{
-      const id = req.params.id;
-      const name=req.body.name
-      const hotelName=req.body.hotelName
-      const amount=req.body.amounts
-      const phoneNumber=req.body.phoneNumber
-      const accessData=new Access({
-        name:name,
-        hotelId:id,
-        hotelName:hotelName,
-        amount:amount,
-        phone:phoneNumber,
-      })
-      await accessData.save();
-      const finalAccessData=await Access.find()
-      res.status(201).send({ mssg: 'Data access amount',accessData:finalAccessData});
-    }
-    catch (e) {
-      console.error(e);
-      res.status(401).send({ mssg: 'get All details failed' });
-    }
+    res.status(200).send({
+      mssg: "Reply sent successfully",
+      data: response,
+    });
 
-    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: "Reply failed" });
+  }
+};
 
-    exports.getAccessAmount = async (req, res) => {
-      try{
-        const id=req.params.id
-        const allAccessAmount=await Access.find()
-        
-        res.status(201).send({ mssg: 'Data access amount',accessData:allAccessAmount});
-      }
-      catch (e) {
-        console.error(e);
-        res.status(401).send({ mssg: 'get All details failed' });
-      }
-    }
+exports.accessAmount = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const name = req.body.name
+    const hotelName = req.body.hotelName
+    const amount = req.body.amounts
+    const phoneNumber = req.body.phoneNumber
+    const accessData = new Access({
+      name: name,
+      hotelId: id,
+      hotelName: hotelName,
+      amount: amount,
+      phone: phoneNumber,
+    })
+    await accessData.save();
+    const finalAccessData = await Access.find()
+    res.status(201).send({ mssg: 'Data access amount', accessData: finalAccessData });
+  }
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get All details failed' });
+  }
 
-    exports.revokeAccessAmount = async (req, res) => {
-      try {
-        const id = req.params.id;
-    
-        // delete
-        await Access.findByIdAndDelete(id);
-    
-        // get updated list
-        const remainingAccount = await Access.find();
-    
-        res.status(200).send({
-          mssg: 'Access revoked successfully',
-          accessData: remainingAccount,
-        });
-    
-      } catch (e) {
-        console.error(e);
-        res.status(500).send({ mssg: 'Revoke access failed' });
-      }
-    };
+}
 
-    
-    exports.getAllAdminName = async (req, res) => {
-      try{
-      const id=req.params.id
-      const obj={
-        name:'diptanshu chouhan',
-        phone:'9755641585',
-        email:'diptanshu88277@gmail.com'
-      }
-      res.status(200).send({
-        mssg: 'Access all admin successfully',
-        accessAllData:obj,
-      });
-      }
-      catch (e) {
-        console.error(e);
-        res.status(500).send({ mssg: 'Revoke access failed' });
-      }
+exports.getAccessAmount = async (req, res) => {
+  try {
+    const id = req.params.id
+    const allAccessAmount = await Access.find()
+
+    res.status(201).send({ mssg: 'Data access amount', accessData: allAccessAmount });
+  }
+  catch (e) {
+    console.error(e);
+    res.status(401).send({ mssg: 'get All details failed' });
+  }
+}
+
+exports.revokeAccessAmount = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // delete
+    await Access.findByIdAndDelete(id);
+
+    // get updated list
+    const remainingAccount = await Access.find();
+
+    res.status(200).send({
+      mssg: 'Access revoked successfully',
+      accessData: remainingAccount,
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: 'Revoke access failed' });
+  }
+};
+
+
+exports.getAllAdminName = async (req, res) => {
+  try {
+    const id = req.params.id
+    const obj = {
+      name: 'diptanshu chouhan',
+      phone: '9755641585',
+      email: 'diptanshu88277@gmail.com'
     }
+    res.status(200).send({
+      mssg: 'Access all admin successfully',
+      accessAllData: obj,
+    });
+  }
+  catch (e) {
+    console.error(e);
+    res.status(500).send({ mssg: 'Revoke access failed' });
+  }
+}

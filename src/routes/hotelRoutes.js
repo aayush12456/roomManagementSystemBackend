@@ -2,7 +2,6 @@ const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const hotelController=require('../controllers/hotelController')
-
 const {
   webhookHandler
 } = require("../controllers/hotelController");
