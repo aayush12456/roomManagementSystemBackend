@@ -25,13 +25,15 @@ cloudinary.config({
 });
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
-  port: 465,
-  secure:true,
+  port: 587,
+  secure:false,
 
   auth: {
     user:process.env.SMTP_USER,
     pass:process.env.SMTP_PASS,
   },
+  family:4,
+  requireTLS:true,
   connectionTimeout: 100000,
   greetingTimeout: 100000,
   socketTimeout: 100000,
